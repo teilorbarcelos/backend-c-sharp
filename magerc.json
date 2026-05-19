@@ -1,0 +1,24 @@
+{
+  "scripts": [
+    {
+      "name": "🛠️ Restore Packages",
+      "command": "dotnet restore src"
+    },
+    {
+      "name": "🚀 Start Development Server",
+      "command": "make dev"
+    },
+    {
+      "name": "🐳 Infrastructure: Start All (SQL Server, Redis)",
+      "command": "make infra-up"
+    },
+    {
+      "name": "🐳 Infrastructure: Remove Containers",
+      "command": "make infra-down"
+    },
+    {
+      "name": "🗄️ Database: Run Migrations",
+      "command": "make db-migrate"
+    }
+  ]
+}
