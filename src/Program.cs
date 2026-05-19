@@ -8,6 +8,7 @@ using MageBackend.Infrastructure.Auth;
 using MageBackend.Core.Middleware;
 using Prometheus;
 using FluentValidation;
+using MageBackend.Infrastructure.Messaging;
 
 DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { "../.env", ".env" }, ignoreExceptions: true));
 
@@ -30,6 +31,9 @@ RedisProvider.Initialize(redisUrl);
 // JWT Provider
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super-secret-key-that-is-very-long-and-secure-123456";
 builder.Services.AddSingleton(new JwtProvider(jwtSecret));
+
+// RabbitMQ Messaging
+builder.Services.AddSingleton<RabbitMQProvider>();
 
 // FluentValidation
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -110,5 +114,9 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await DbInitializer.InitializeAsync(dbContext);
 }
+
+// Connect to RabbitMQ if enabled
+var rabbitProvider = app.Services.GetRequiredService<RabbitMQProvider>();
+rabbitProvider.Connect();
 
 app.Run();

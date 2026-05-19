@@ -109,7 +109,7 @@ Para atingir a paridade total de funcionalidades e DX (Developer Experience) com
 - [ ] **Drivers de Nuvem (AWS S3, Google Cloud Storage, Azure Blob):** Desenvolver drivers integrados e prontos para uso em produção.
 
 ### 2. 📩 Mensageria (RabbitMQ Integration)
-- [ ] **Provedor de Mensageria:** Desenvolver um serviço integrado com RabbitMQ para publicação e consumo de mensagens assíncronas, ativado condicionalmente via variável de ambiente `MESSAGING_ENABLED=true` no `.env`.
+- [x] **Provedor de Mensageria:** Desenvolver um serviço integrado com RabbitMQ para publicação e consumo de mensagens assíncronas, ativado condicionalmente via variável de ambiente `MESSAGING_ENABLED=true` no `.env`.
 
 ### 3. 🛠️ CLI de Geração de Código (Generator)
 - [ ] **Scaffolder de Feature Slices (CLI):** Criar uma CLI ou script (ex: .NET tool customizada ou script de terminal) capaz de criar automaticamente a pasta de Features (Controller, DTOs, Entidades) ao informar o nome do novo recurso, acelerando a criação de CRUDs seguindo o padrão de fatias verticais.
