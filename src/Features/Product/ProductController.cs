@@ -8,6 +8,7 @@ using MageBackend.Database;
 using MageBackend.Core;
 using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
+using FluentValidation;
 
 namespace MageBackend.Features.Product
 {
@@ -16,29 +17,31 @@ namespace MageBackend.Features.Product
     public class ProductController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
+        private readonly IValidator<CreateProductDto> _createValidator;
         private static readonly string[] AllowedFields = { "name", "sku", "category", "active", "created_at", "updated_at" };
 
-        public ProductController(ApplicationDbContext context)
+        public ProductController(ApplicationDbContext context, IValidator<CreateProductDto> createValidator)
         {
             _context = context;
+            _createValidator = createValidator;
         }
 
-        public class ProductResponseDto
+        public record ProductResponseDto
         {
-            public string Id { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string Sku { get; set; } = string.Empty;
-            public string Category { get; set; } = string.Empty;
-            public decimal Price { get; set; }
-            public int Stock { get; set; }
-            public string? Description { get; set; }
-            public bool Active { get; set; }
+            public string Id { get; init; } = string.Empty;
+            public string Name { get; init; } = string.Empty;
+            public string Sku { get; init; } = string.Empty;
+            public string Category { get; init; } = string.Empty;
+            public decimal Price { get; init; }
+            public int Stock { get; init; }
+            public string? Description { get; init; }
+            public bool Active { get; init; }
             [JsonPropertyName("is_deleted")]
-            public bool IsDeleted { get; set; }
+            public bool IsDeleted { get; init; }
             [JsonPropertyName("created_at")]
-            public DateTime CreatedAt { get; set; }
+            public DateTime CreatedAt { get; init; }
             [JsonPropertyName("updated_at")]
-            public DateTime UpdatedAt { get; set; }
+            public DateTime UpdatedAt { get; init; }
         }
 
         [HttpGet]
@@ -87,14 +90,14 @@ namespace MageBackend.Features.Product
             return Ok(MapToDto(product));
         }
 
-        public class CreateProductDto
+        public record CreateProductDto
         {
-            public string Name { get; set; } = string.Empty;
-            public string Sku { get; set; } = string.Empty;
-            public string Category { get; set; } = string.Empty;
-            public decimal Price { get; set; }
-            public int Stock { get; set; }
-            public string? Description { get; set; }
+            public string Name { get; init; } = string.Empty;
+            public string Sku { get; init; } = string.Empty;
+            public string Category { get; init; } = string.Empty;
+            public decimal Price { get; init; }
+            public int Stock { get; init; }
+            public string? Description { get; init; }
         }
 
         [HttpPost]
@@ -103,9 +106,10 @@ namespace MageBackend.Features.Product
         [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateProductDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Name) || string.IsNullOrEmpty(dto.Sku) || string.IsNullOrEmpty(dto.Category))
+            var validationResult = await _createValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "Name, sku, and category are required." });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             var skuExists = await _context.Product.AnyAsync(p => p.Sku == dto.Sku && !p.IsDeleted);
@@ -181,9 +185,9 @@ namespace MageBackend.Features.Product
             return NoContent();
         }
 
-        public class ToggleStatusDto
+        public record ToggleStatusDto
         {
-            public bool Active { get; set; }
+            public bool Active { get; init; }
         }
 
         [HttpPatch("{id}/status")]
@@ -218,6 +222,16 @@ namespace MageBackend.Features.Product
                 CreatedAt = product.CreatedAt,
                 UpdatedAt = product.UpdatedAt
             };
+        }
+    }
+
+    public class CreateProductDtoValidator : AbstractValidator<ProductController.CreateProductDto>
+    {
+        public CreateProductDtoValidator()
+        {
+            RuleFor(x => x.Name).NotEmpty().WithMessage("Name, sku, and category are required.");
+            RuleFor(x => x.Sku).NotEmpty().WithMessage("Name, sku, and category are required.");
+            RuleFor(x => x.Category).NotEmpty().WithMessage("Name, sku, and category are required.");
         }
     }
 }

@@ -7,6 +7,7 @@ using MageBackend.Database;
 using MageBackend.Core;
 using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
+using FluentValidation;
 
 namespace MageBackend.Features.Feature
 {
@@ -15,11 +16,18 @@ namespace MageBackend.Features.Feature
     public class FeatureController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
+        private readonly IValidator<CreateFeatureDto> _createValidator;
+        private readonly IValidator<UpdateFeatureDto> _updateValidator;
         private static readonly string[] AllowedFields = { "name", "description" };
 
-        public FeatureController(ApplicationDbContext context)
+        public FeatureController(
+            ApplicationDbContext context,
+            IValidator<CreateFeatureDto> createValidator,
+            IValidator<UpdateFeatureDto> updateValidator)
         {
             _context = context;
+            _createValidator = createValidator;
+            _updateValidator = updateValidator;
         }
 
         [HttpGet]
@@ -65,11 +73,11 @@ namespace MageBackend.Features.Feature
             return Ok(feature);
         }
 
-        public class CreateFeatureDto
+        public record CreateFeatureDto
         {
-            public string Id { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string? Description { get; set; }
+            public string Id { get; init; } = string.Empty;
+            public string Name { get; init; } = string.Empty;
+            public string? Description { get; init; }
         }
 
         [HttpPost]
@@ -78,9 +86,10 @@ namespace MageBackend.Features.Feature
         [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateFeatureDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Id) || string.IsNullOrEmpty(dto.Name))
+            var validationResult = await _createValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "Id and Name are required" });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             var exists = await _context.Feature.AnyAsync(f => f.Id == dto.Id);
@@ -102,10 +111,10 @@ namespace MageBackend.Features.Feature
             return StatusCode(201, feature);
         }
 
-        public class UpdateFeatureDto
+        public record UpdateFeatureDto
         {
-            public string Name { get; set; } = string.Empty;
-            public string? Description { get; set; }
+            public string Name { get; init; } = string.Empty;
+            public string? Description { get; init; }
         }
 
         [HttpPut("{id}")]
@@ -114,6 +123,12 @@ namespace MageBackend.Features.Feature
         [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateFeatureDto dto)
         {
+            var validationResult = await _updateValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+            }
+
             var feature = await _context.Feature.FindAsync(id);
             if (feature == null) return NotFound(new { message = "Feature not found" });
 
@@ -140,9 +155,9 @@ namespace MageBackend.Features.Feature
             return NoContent();
         }
 
-        public class ToggleStatusDto
+        public record ToggleStatusDto
         {
-            public bool Active { get; set; }
+            public bool Active { get; init; }
         }
 
         [HttpPatch("{id}/status")]
@@ -159,6 +174,23 @@ namespace MageBackend.Features.Feature
 
             await _context.SaveChangesAsync();
             return Ok(feature);
+        }
+    }
+
+    public class CreateFeatureDtoValidator : AbstractValidator<FeatureController.CreateFeatureDto>
+    {
+        public CreateFeatureDtoValidator()
+        {
+            RuleFor(x => x.Id).NotEmpty().WithMessage("Id and Name are required");
+            RuleFor(x => x.Name).NotEmpty().WithMessage("Id and Name are required");
+        }
+    }
+
+    public class UpdateFeatureDtoValidator : AbstractValidator<FeatureController.UpdateFeatureDto>
+    {
+        public UpdateFeatureDtoValidator()
+        {
+            RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required");
         }
     }
 }

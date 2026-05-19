@@ -11,6 +11,7 @@ using MageBackend.Core;
 using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
 using MageBackend.Infrastructure.Auth;
+using FluentValidation;
 
 namespace MageBackend.Features.Role
 {
@@ -19,40 +20,42 @@ namespace MageBackend.Features.Role
     public class RoleController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
+        private readonly IValidator<CreateRoleDto> _roleValidator;
         private static readonly string[] AllowedFields = { "name", "description" };
 
-        public RoleController(ApplicationDbContext context)
+        public RoleController(ApplicationDbContext context, IValidator<CreateRoleDto> roleValidator)
         {
             _context = context;
+            _roleValidator = roleValidator;
         }
 
-        public class RoleFeatureDto
+        public record RoleFeatureDto
         {
             [JsonPropertyName("id_feature")]
-            public string IdFeature { get; set; } = string.Empty;
-            public bool Create { get; set; }
-            public bool View { get; set; }
-            public bool Delete { get; set; }
-            public bool Activate { get; set; }
+            public string IdFeature { get; init; } = string.Empty;
+            public bool Create { get; init; }
+            public bool View { get; init; }
+            public bool Delete { get; init; }
+            public bool Activate { get; init; }
         }
 
-        public class RoleResponseDto
+        public record RoleResponseDto
         {
-            public string Id { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string? Description { get; set; }
-            public bool Active { get; set; }
+            public string Id { get; init; } = string.Empty;
+            public string Name { get; init; } = string.Empty;
+            public string? Description { get; init; }
+            public bool Active { get; init; }
             [JsonPropertyName("is_deleted")]
-            public bool IsDeleted { get; set; }
+            public bool IsDeleted { get; init; }
             [JsonPropertyName("created_at")]
-            public DateTime CreatedAt { get; set; }
+            public DateTime CreatedAt { get; init; }
             [JsonPropertyName("updated_at")]
-            public DateTime UpdatedAt { get; set; }
+            public DateTime UpdatedAt { get; init; }
             [JsonPropertyName("deleted_at")]
             [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
-            public DateTime? DeletedAt { get; set; }
+            public DateTime? DeletedAt { get; init; }
             [JsonPropertyName("RoleFeature")]
-            public List<RoleFeatureDto> RoleFeature { get; set; } = new();
+            public List<RoleFeatureDto> RoleFeature { get; init; } = new();
         }
 
         [HttpGet("features")]
@@ -153,11 +156,11 @@ namespace MageBackend.Features.Role
             return Ok(MapToDto(role, roleFeatures));
         }
 
-        public class CreateRoleDto
+        public record CreateRoleDto
         {
-            public string Name { get; set; } = string.Empty;
-            public string Description { get; set; } = string.Empty;
-            public List<RoleFeatureDto>? Permissions { get; set; }
+            public string Name { get; init; } = string.Empty;
+            public string Description { get; init; } = string.Empty;
+            public List<RoleFeatureDto>? Permissions { get; init; }
         }
 
         [HttpPost]
@@ -166,7 +169,11 @@ namespace MageBackend.Features.Role
         [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Name)) return BadRequest(new { message = "Name is required" });
+            var validationResult = await _roleValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+            }
 
             var id = Slugify(dto.Name);
             var exists = await _context.Role.AnyAsync(r => r.Id == id);
@@ -207,6 +214,12 @@ namespace MageBackend.Features.Role
         [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] CreateRoleDto dto)
         {
+            var validationResult = await _roleValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+            }
+
             var role = await _context.Role.Where(r => r.Id == id && !r.IsDeleted).FirstOrDefaultAsync();
             if (role == null) return NotFound(new { message = "Role not found" });
 
@@ -278,9 +291,9 @@ namespace MageBackend.Features.Role
             return NoContent();
         }
 
-        public class ToggleStatusDto
+        public record ToggleStatusDto
         {
-            public bool Active { get; set; }
+            public bool Active { get; init; }
         }
 
         [HttpPatch("{id}/status")]
@@ -348,6 +361,14 @@ namespace MageBackend.Features.Role
                 DeletedAt = role.DeletedAt,
                 RoleFeature = features
             };
+        }
+    }
+
+    public class CreateRoleDtoValidator : AbstractValidator<RoleController.CreateRoleDto>
+    {
+        public CreateRoleDtoValidator()
+        {
+            RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required");
         }
     }
 }

@@ -28,48 +28,48 @@ namespace MageBackend.Features.AuditExplorer
             return Content(AuditExplorerView.Html, "text/html");
         }
 
-        public class AuditLogsResponse
+        public record AuditLogsResponse
         {
-            public List<AuditItemDto> Items { get; set; } = new();
-            public int Total { get; set; }
+            public List<AuditItemDto> Items { get; init; } = new();
+            public int Total { get; init; }
         }
 
-        public class ErrorLogsResponse
+        public record ErrorLogsResponse
         {
-            public List<ErrorItemDto> Items { get; set; } = new();
-            public int Total { get; set; }
+            public List<ErrorItemDto> Items { get; init; } = new();
+            public int Total { get; init; }
         }
 
-        public class AuditItemDto
+        public record AuditItemDto
         {
-            public string Id { get; set; } = string.Empty;
+            public string Id { get; init; } = string.Empty;
             [JsonPropertyName("id_user")]
-            public string? IdUser { get; set; }
+            public string? IdUser { get; init; }
             [JsonPropertyName("user_name")]
-            public string? UserName { get; set; }
+            public string? UserName { get; init; }
             [JsonPropertyName("action_type")]
-            public string? ActionType { get; set; }
+            public string? ActionType { get; init; }
             [JsonPropertyName("execute_type")]
-            public string? ExecuteType { get; set; }
-            public string? Class { get; set; }
-            public string? Function { get; set; }
-            public string? Params { get; set; }
-            public string? Raw { get; set; }
+            public string? ExecuteType { get; init; }
+            public string? Class { get; init; }
+            public string? Function { get; init; }
+            public string? Params { get; init; }
+            public string? Raw { get; init; }
             [JsonPropertyName("table_name")]
-            public string? TableName { get; set; }
+            public string? TableName { get; init; }
             [JsonPropertyName("diff_value")]
-            public string? DiffValue { get; set; }
-            public string? Error { get; set; }
-            public string? Host { get; set; }
-            public string? Ip { get; set; }
+            public string? DiffValue { get; init; }
+            public string? Error { get; init; }
+            public string? Host { get; init; }
+            public string? Ip { get; init; }
             [JsonPropertyName("base_url")]
-            public string? BaseUrl { get; set; }
-            public string? Method { get; set; }
-            public string? Hostname { get; set; }
+            public string? BaseUrl { get; init; }
+            public string? Method { get; init; }
+            public string? Hostname { get; init; }
             [JsonPropertyName("original_url")]
-            public string? OriginalUrl { get; set; }
+            public string? OriginalUrl { get; init; }
             [JsonPropertyName("created_at")]
-            public DateTime CreatedAt { get; set; }
+            public DateTime CreatedAt { get; init; }
         }
 
         [HttpGet("admin/api/audit")]
@@ -122,18 +122,18 @@ namespace MageBackend.Features.AuditExplorer
             return Ok(new { items, total });
         }
 
-        public class ErrorItemDto
+        public record ErrorItemDto
         {
-            public string Id { get; set; } = string.Empty;
+            public string Id { get; init; } = string.Empty;
             [JsonPropertyName("id_user")]
-            public string? IdUser { get; set; }
-            public string? Source { get; set; }
+            public string? IdUser { get; init; }
+            public string? Source { get; init; }
             [JsonPropertyName("error_message")]
-            public string? ErrorMessage { get; set; }
+            public string? ErrorMessage { get; init; }
             [JsonPropertyName("error_data")]
-            public string? ErrorData { get; set; }
+            public string? ErrorData { get; init; }
             [JsonPropertyName("created_at")]
-            public DateTime CreatedAt { get; set; }
+            public DateTime CreatedAt { get; init; }
         }
 
         [HttpGet("admin/api/errors")]

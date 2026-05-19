@@ -10,6 +10,7 @@ using MageBackend.Core;
 using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
 using MageBackend.Infrastructure.Auth;
+using FluentValidation;
 
 namespace MageBackend.Features.User
 {
@@ -18,28 +19,35 @@ namespace MageBackend.Features.User
     public class UserController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
+        private readonly IValidator<CreateUserDto> _createUserValidator;
+        private readonly IValidator<UpdateUserDto> _updateUserValidator;
         private static readonly string[] AllowedFields = { "name", "email", "active", "created_at", "updated_at", "Role.name" };
 
-        public UserController(ApplicationDbContext context)
+        public UserController(
+            ApplicationDbContext context,
+            IValidator<CreateUserDto> createUserValidator,
+            IValidator<UpdateUserDto> updateUserValidator)
         {
             _context = context;
+            _createUserValidator = createUserValidator;
+            _updateUserValidator = updateUserValidator;
         }
 
-        public class UserResponseDto
+        public record UserResponseDto
         {
-            public string Id { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string Email { get; set; } = string.Empty;
-            public string? Phone { get; set; }
-            public string? Document { get; set; }
-            public string? Avatar { get; set; }
+            public string Id { get; init; } = string.Empty;
+            public string Name { get; init; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string? Phone { get; init; }
+            public string? Document { get; init; }
+            public string? Avatar { get; init; }
             [JsonPropertyName("id_role")]
-            public string IdRole { get; set; } = string.Empty;
-            public bool Active { get; set; }
+            public string IdRole { get; init; } = string.Empty;
+            public bool Active { get; init; }
             [JsonPropertyName("created_at")]
-            public DateTime CreatedAt { get; set; }
+            public DateTime CreatedAt { get; init; }
             [JsonPropertyName("updated_at")]
-            public DateTime UpdatedAt { get; set; }
+            public DateTime UpdatedAt { get; init; }
         }
 
         [HttpGet]
@@ -90,16 +98,16 @@ namespace MageBackend.Features.User
             return Ok(MapToDto(user));
         }
 
-        public class CreateUserDto
+        public record CreateUserDto
         {
-            public string Name { get; set; } = string.Empty;
-            public string Email { get; set; } = string.Empty;
-            public string Password { get; set; } = string.Empty;
-            public string? Phone { get; set; }
-            public string? Document { get; set; }
-            public string? Avatar { get; set; }
+            public string Name { get; init; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string Password { get; init; } = string.Empty;
+            public string? Phone { get; init; }
+            public string? Document { get; init; }
+            public string? Avatar { get; init; }
             [JsonPropertyName("id_role")]
-            public string IdRole { get; set; } = string.Empty;
+            public string IdRole { get; init; } = string.Empty;
         }
 
         [HttpPost]
@@ -108,14 +116,10 @@ namespace MageBackend.Features.User
         [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Name) || string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password) || string.IsNullOrEmpty(dto.IdRole))
+            var validationResult = await _createUserValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "Name, email, password, and id_role are required." });
-            }
-
-            if (dto.Password.Length < 6)
-            {
-                return BadRequest(new { message = "Password must be at least 6 characters long." });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             var emailExists = await _context.User.AnyAsync(u => u.Email == dto.Email && !u.IsDeleted);
@@ -163,17 +167,17 @@ namespace MageBackend.Features.User
             return StatusCode(201, MapToDto(user));
         }
 
-        public class UpdateUserDto
+        public record UpdateUserDto
         {
-            public string? Name { get; set; }
-            public string? Email { get; set; }
-            public string? Password { get; set; }
-            public string? Phone { get; set; }
-            public string? Document { get; set; }
-            public string? Avatar { get; set; }
+            public string? Name { get; init; }
+            public string? Email { get; init; }
+            public string? Password { get; init; }
+            public string? Phone { get; init; }
+            public string? Document { get; init; }
+            public string? Avatar { get; init; }
             [JsonPropertyName("id_role")]
-            public string? IdRole { get; set; }
-            public bool? Active { get; set; }
+            public string? IdRole { get; init; }
+            public bool? Active { get; init; }
         }
 
         [HttpPut("{id}")]
@@ -183,6 +187,12 @@ namespace MageBackend.Features.User
         [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto)
         {
+            var validationResult = await _updateUserValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+            }
+
             var user = await _context.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
             if (user == null) return NotFound(new { message = "User not found" });
 
@@ -227,7 +237,6 @@ namespace MageBackend.Features.User
 
             if (!string.IsNullOrEmpty(dto.Password))
             {
-                if (dto.Password.Length < 6) return BadRequest(new { message = "Password must be at least 6 characters long." });
                 var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password, 12);
                 if (user.Auth != null)
                 {
@@ -288,9 +297,9 @@ namespace MageBackend.Features.User
             return NoContent();
         }
 
-        public class ToggleStatusDto
+        public record ToggleStatusDto
         {
-            public bool Active { get; set; }
+            public bool Active { get; init; }
         }
 
         [HttpPatch("{id}/status")]
@@ -333,6 +342,33 @@ namespace MageBackend.Features.User
                 CreatedAt = user.CreatedAt,
                 UpdatedAt = user.UpdatedAt
             };
+        }
+    }
+
+    public class CreateUserDtoValidator : AbstractValidator<UserController.CreateUserDto>
+    {
+        public CreateUserDtoValidator()
+        {
+            RuleFor(x => x.Name).NotEmpty().WithMessage("Name, email, password, and id_role are required.");
+            RuleFor(x => x.Email).NotEmpty().WithMessage("Name, email, password, and id_role are required.");
+            RuleFor(x => x.Password).NotEmpty().WithMessage("Name, email, password, and id_role are required.");
+            RuleFor(x => x.IdRole).NotEmpty().WithMessage("Name, email, password, and id_role are required.");
+
+            RuleFor(x => x.Password)
+                .MinimumLength(6)
+                .When(x => !string.IsNullOrEmpty(x.Password))
+                .WithMessage("Password must be at least 6 characters long.");
+        }
+    }
+
+    public class UpdateUserDtoValidator : AbstractValidator<UserController.UpdateUserDto>
+    {
+        public UpdateUserDtoValidator()
+        {
+            RuleFor(x => x.Password)
+                .MinimumLength(6)
+                .When(x => !string.IsNullOrEmpty(x.Password))
+                .WithMessage("Password must be at least 6 characters long.");
         }
     }
 }

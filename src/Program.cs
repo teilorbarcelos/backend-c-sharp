@@ -7,10 +7,12 @@ using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MageBackend.Core.Middleware;
 using Prometheus;
+using FluentValidation;
 
 DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { "../.env", ".env" }, ignoreExceptions: true));
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 // Load port from env
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8888";
@@ -28,6 +30,9 @@ RedisProvider.Initialize(redisUrl);
 // JWT Provider
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super-secret-key-that-is-very-long-and-secure-123456";
 builder.Services.AddSingleton(new JwtProvider(jwtSecret));
+
+// FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // Controllers with JSON formatting matching Fastify (camelCase by default)
 builder.Services.AddControllers()

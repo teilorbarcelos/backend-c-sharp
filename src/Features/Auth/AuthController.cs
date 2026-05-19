@@ -12,6 +12,7 @@ using MageBackend.Core;
 using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
 using MageBackend.Infrastructure.Auth;
+using FluentValidation;
 
 namespace MageBackend.Features.Auth
 {
@@ -21,63 +22,80 @@ namespace MageBackend.Features.Auth
     {
         private readonly ApplicationDbContext _context;
         private readonly JwtProvider _jwtProvider;
+        private readonly IValidator<LoginDto> _loginValidator;
+        private readonly IValidator<RefreshDto> _refreshValidator;
+        private readonly IValidator<ResetRequestDto> _resetRequestValidator;
+        private readonly IValidator<ResetValidateDto> _resetValidateValidator;
+        private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
 
-        public AuthController(ApplicationDbContext context, JwtProvider jwtProvider)
+        public AuthController(
+            ApplicationDbContext context,
+            JwtProvider jwtProvider,
+            IValidator<LoginDto> loginValidator,
+            IValidator<RefreshDto> refreshValidator,
+            IValidator<ResetRequestDto> resetRequestValidator,
+            IValidator<ResetValidateDto> resetValidateValidator,
+            IValidator<ChangePasswordDto> changePasswordValidator)
         {
             _context = context;
             _jwtProvider = jwtProvider;
+            _loginValidator = loginValidator;
+            _refreshValidator = refreshValidator;
+            _resetRequestValidator = resetRequestValidator;
+            _resetValidateValidator = resetValidateValidator;
+            _changePasswordValidator = changePasswordValidator;
         }
 
-        public class LoginDto
+        public record LoginDto
         {
-            public string Email { get; set; } = string.Empty;
-            public string Password { get; set; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string Password { get; init; } = string.Empty;
         }
 
-        public class RefreshDto
+        public record RefreshDto
         {
-            public string RefreshToken { get; set; } = string.Empty;
+            public string RefreshToken { get; init; } = string.Empty;
         }
 
-        public class ResetRequestDto
+        public record ResetRequestDto
         {
-            public string Email { get; set; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
         }
 
-        public class ResetValidateDto
+        public record ResetValidateDto
         {
-            public string Email { get; set; } = string.Empty;
-            public string Token { get; set; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string Token { get; init; } = string.Empty;
         }
 
-        public class ChangePasswordDto
+        public record ChangePasswordDto
         {
-            public string Email { get; set; } = string.Empty;
-            public string Token { get; set; } = string.Empty;
-            public string Password { get; set; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public string Token { get; init; } = string.Empty;
+            public string Password { get; init; } = string.Empty;
         }
 
-        public class AuthUserRoleDto
+        public record AuthUserRoleDto
         {
-            public string Id { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string? Description { get; set; }
-            public List<PermissionClaim> Permissions { get; set; } = new();
+            public string Id { get; init; } = string.Empty;
+            public string Name { get; init; } = string.Empty;
+            public string? Description { get; init; }
+            public List<PermissionClaim> Permissions { get; init; } = new();
         }
 
-        public class AuthUserDto
+        public record AuthUserDto
         {
-            public string Id { get; set; } = string.Empty;
-            public string Name { get; set; } = string.Empty;
-            public string Email { get; set; } = string.Empty;
-            public AuthUserRoleDto Role { get; set; } = new();
+            public string Id { get; init; } = string.Empty;
+            public string Name { get; init; } = string.Empty;
+            public string Email { get; init; } = string.Empty;
+            public AuthUserRoleDto Role { get; init; } = new();
         }
 
-        public class AuthResponseDto
+        public record AuthResponseDto
         {
-            public string Token { get; set; } = string.Empty;
-            public string RefreshToken { get; set; } = string.Empty;
-            public AuthUserDto User { get; set; } = new();
+            public string Token { get; init; } = string.Empty;
+            public string RefreshToken { get; init; } = string.Empty;
+            public AuthUserDto User { get; init; } = new();
         }
 
         [HttpPost("login")]
@@ -86,9 +104,10 @@ namespace MageBackend.Features.Auth
         [ProducesResponseType(401)]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password))
+            var validationResult = await _loginValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "Email and password are required." });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             var user = await _context.User
@@ -116,9 +135,10 @@ namespace MageBackend.Features.Auth
         [ProducesResponseType(401)]
         public async Task<IActionResult> Refresh([FromBody] RefreshDto dto)
         {
-            if (string.IsNullOrEmpty(dto.RefreshToken))
+            var validationResult = await _refreshValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "RefreshToken is required." });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             try
@@ -209,9 +229,10 @@ namespace MageBackend.Features.Auth
         [ProducesResponseType(400)]
         public async Task<IActionResult> RequestPasswordReset([FromBody] ResetRequestDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Email))
+            var validationResult = await _resetRequestValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "Email is required." });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             var user = await _context.User
@@ -242,9 +263,10 @@ namespace MageBackend.Features.Auth
         [ProducesResponseType(404)]
         public async Task<IActionResult> ValidateResetToken([FromBody] ResetValidateDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Token))
+            var validationResult = await _resetValidateValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "Email and token are required." });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             var user = await _context.User
@@ -276,9 +298,10 @@ namespace MageBackend.Features.Auth
         [ProducesResponseType(404)]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
-            if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Token) || string.IsNullOrEmpty(dto.Password))
+            var validationResult = await _changePasswordValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = "Email, token, and password are required." });
+                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
             }
 
             var user = await _context.User
@@ -389,6 +412,50 @@ namespace MageBackend.Features.Auth
             };
 
             return Ok(response);
+        }
+    }
+
+    public class LoginDtoValidator : AbstractValidator<AuthController.LoginDto>
+    {
+        public LoginDtoValidator()
+        {
+            RuleFor(x => x.Email).NotEmpty().WithMessage("Email and password are required.");
+            RuleFor(x => x.Password).NotEmpty().WithMessage("Email and password are required.");
+        }
+    }
+
+    public class RefreshDtoValidator : AbstractValidator<AuthController.RefreshDto>
+    {
+        public RefreshDtoValidator()
+        {
+            RuleFor(x => x.RefreshToken).NotEmpty().WithMessage("RefreshToken is required.");
+        }
+    }
+
+    public class ResetRequestDtoValidator : AbstractValidator<AuthController.ResetRequestDto>
+    {
+        public ResetRequestDtoValidator()
+        {
+            RuleFor(x => x.Email).NotEmpty().WithMessage("Email is required.");
+        }
+    }
+
+    public class ResetValidateDtoValidator : AbstractValidator<AuthController.ResetValidateDto>
+    {
+        public ResetValidateDtoValidator()
+        {
+            RuleFor(x => x.Email).NotEmpty().WithMessage("Email and token are required.");
+            RuleFor(x => x.Token).NotEmpty().WithMessage("Email and token are required.");
+        }
+    }
+
+    public class ChangePasswordDtoValidator : AbstractValidator<AuthController.ChangePasswordDto>
+    {
+        public ChangePasswordDtoValidator()
+        {
+            RuleFor(x => x.Email).NotEmpty().WithMessage("Email, token, and password are required.");
+            RuleFor(x => x.Token).NotEmpty().WithMessage("Email, token, and password are required.");
+            RuleFor(x => x.Password).NotEmpty().WithMessage("Email, token, and password are required.");
         }
     }
 }
