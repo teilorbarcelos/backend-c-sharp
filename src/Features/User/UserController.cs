@@ -51,18 +51,13 @@ namespace MageBackend.Features.User
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var query = _context.User.Include(u => u.Role).Where(u => !u.IsDeleted);
+            var result = await _context.User
+                .Include(u => u.Role)
+                .Where(u => !u.IsDeleted)
+                .ApplyActiveFilter(req.Active, forceDefaultTrue: true)
+                .ExecuteSearchAsync(req, MapToDto);
 
-            if (req.Active.HasValue)
-            {
-                query = query.Where(u => u.Active == req.Active.Value);
-            }
-            else
-            {
-                query = query.Where(u => u.Active == true);
-            }
-
-            return await ExecuteSearch(query, req);
+            return Ok(result);
         }
 
         [HttpGet("all")]
@@ -74,14 +69,13 @@ namespace MageBackend.Features.User
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var query = _context.User.Include(u => u.Role).Where(u => !u.IsDeleted);
+            var result = await _context.User
+                .Include(u => u.Role)
+                .Where(u => !u.IsDeleted)
+                .ApplyActiveFilter(req.Active)
+                .ExecuteSearchAsync(req, MapToDto);
 
-            if (req.Active.HasValue)
-            {
-                query = query.Where(u => u.Active == req.Active.Value);
-            }
-
-            return await ExecuteSearch(query, req);
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
@@ -339,55 +333,6 @@ namespace MageBackend.Features.User
                 CreatedAt = user.CreatedAt,
                 UpdatedAt = user.UpdatedAt
             };
-        }
-
-        private async Task<IActionResult> ExecuteSearch(IQueryable<Database.User> query, SearchRequest req)
-        {
-            // Apply SearchWord
-            if (!string.IsNullOrEmpty(req.SearchWord) && !string.IsNullOrEmpty(req.SearchFields))
-            {
-                var fields = req.SearchFields.Split(',').Select(f => f.Trim().ToLower()).ToList();
-                query = query.Where(u =>
-                    (fields.Contains("name") && u.Name.Contains(req.SearchWord)) ||
-                    (fields.Contains("email") && u.Email.Contains(req.SearchWord)) ||
-                    (fields.Contains("role.name") && u.Role != null && u.Role.Name.Contains(req.SearchWord))
-                );
-            }
-
-            // Apply Date Filters
-            if (req.CreatedAtStart.HasValue)
-            {
-                query = query.Where(u => u.CreatedAt >= req.CreatedAtStart.Value);
-            }
-            if (req.CreatedAtEnd.HasValue)
-            {
-                query = query.Where(u => u.CreatedAt <= req.CreatedAtEnd.Value);
-            }
-
-            var total = await query.CountAsync();
-
-            // Apply Sorting
-            if (!string.IsNullOrEmpty(req.OrderBy))
-            {
-                var isDesc = req.OrderDirection.Equals("desc", StringComparison.OrdinalIgnoreCase);
-                query = req.OrderBy.ToLower() switch
-                {
-                    "name" => isDesc ? query.OrderByDescending(u => u.Name) : query.OrderBy(u => u.Name),
-                    "email" => isDesc ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email),
-                    "role.name" => isDesc ? query.OrderByDescending(u => u.Role != null ? u.Role.Name : "") : query.OrderBy(u => u.Role != null ? u.Role.Name : ""),
-                    _ => isDesc ? query.OrderByDescending(u => u.CreatedAt) : query.OrderBy(u => u.CreatedAt)
-                };
-            }
-            else
-            {
-                query = query.OrderByDescending(u => u.CreatedAt);
-            }
-
-            // Apply Pagination
-            var items = await query.Skip(req.Page * req.Size).Take(req.Size).ToListAsync();
-
-            var dtos = items.Select(MapToDto).ToList();
-            return Ok(new SearchResult<UserResponseDto>(dtos, total, req.Page, req.Size));
         }
     }
 }

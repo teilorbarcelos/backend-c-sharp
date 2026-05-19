@@ -73,18 +73,28 @@ namespace MageBackend.Features.Role
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var queryable = _context.Role.Where(r => !r.IsDeleted);
+            var searchResult = await _context.Role
+                .Where(r => !r.IsDeleted)
+                .ApplyActiveFilter(req.Active, forceDefaultTrue: true)
+                .ExecuteSearchAsync(req, r => r);
 
-            if (req.Active.HasValue)
-            {
-                queryable = queryable.Where(r => r.Active == req.Active.Value);
-            }
-            else
-            {
-                queryable = queryable.Where(r => r.Active == true);
-            }
+            var roleIds = searchResult.Items.Select(r => r.Id).ToList();
+            var allRoleFeatures = await _context.RoleFeature
+                .Where(rf => roleIds.Contains(rf.IdRole))
+                .ToListAsync();
 
-            return await ExecuteSearch(queryable, req);
+            var dtos = searchResult.Items.Select(r => MapToDto(r, allRoleFeatures
+                .Where(rf => rf.IdRole == r.Id)
+                .Select(rf => new RoleFeatureDto
+                {
+                    IdFeature = rf.IdFeature,
+                    Create = rf.Create,
+                    View = rf.View,
+                    Delete = rf.Delete,
+                    Activate = rf.Activate
+                }).ToList())).ToList();
+
+            return Ok(new SearchResult<RoleResponseDto>(dtos, searchResult.Total, searchResult.Page, searchResult.Size));
         }
 
         [HttpGet("all")]
@@ -96,14 +106,28 @@ namespace MageBackend.Features.Role
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var queryable = _context.Role.Where(r => !r.IsDeleted);
+            var searchResult = await _context.Role
+                .Where(r => !r.IsDeleted)
+                .ApplyActiveFilter(req.Active)
+                .ExecuteSearchAsync(req, r => r);
 
-            if (req.Active.HasValue)
-            {
-                queryable = queryable.Where(r => r.Active == req.Active.Value);
-            }
+            var roleIds = searchResult.Items.Select(r => r.Id).ToList();
+            var allRoleFeatures = await _context.RoleFeature
+                .Where(rf => roleIds.Contains(rf.IdRole))
+                .ToListAsync();
 
-            return await ExecuteSearch(queryable, req);
+            var dtos = searchResult.Items.Select(r => MapToDto(r, allRoleFeatures
+                .Where(rf => rf.IdRole == r.Id)
+                .Select(rf => new RoleFeatureDto
+                {
+                    IdFeature = rf.IdFeature,
+                    Create = rf.Create,
+                    View = rf.View,
+                    Delete = rf.Delete,
+                    Activate = rf.Activate
+                }).ToList())).ToList();
+
+            return Ok(new SearchResult<RoleResponseDto>(dtos, searchResult.Total, searchResult.Page, searchResult.Size));
         }
 
         [HttpGet("{id}")]
@@ -324,60 +348,6 @@ namespace MageBackend.Features.Role
                 DeletedAt = role.DeletedAt,
                 RoleFeature = features
             };
-        }
-
-        private async Task<IActionResult> ExecuteSearch(IQueryable<Database.Role> query, SearchRequest req)
-        {
-            if (!string.IsNullOrEmpty(req.SearchWord))
-            {
-                query = query.Where(r => r.Name.Contains(req.SearchWord) || (r.Description != null && r.Description.Contains(req.SearchWord)));
-            }
-
-            if (req.CreatedAtStart.HasValue)
-            {
-                query = query.Where(r => r.CreatedAt >= req.CreatedAtStart.Value);
-            }
-            if (req.CreatedAtEnd.HasValue)
-            {
-                query = query.Where(r => r.CreatedAt <= req.CreatedAtEnd.Value);
-            }
-
-            var total = await query.CountAsync();
-
-            if (!string.IsNullOrEmpty(req.OrderBy))
-            {
-                var isDesc = req.OrderDirection.Equals("desc", StringComparison.OrdinalIgnoreCase);
-                query = req.OrderBy.ToLower() switch
-                {
-                    "name" => isDesc ? query.OrderByDescending(r => r.Name) : query.OrderBy(r => r.Name),
-                    "description" => isDesc ? query.OrderByDescending(r => r.Description) : query.OrderBy(r => r.Description),
-                    _ => isDesc ? query.OrderByDescending(r => r.CreatedAt) : query.OrderBy(r => r.CreatedAt)
-                };
-            }
-            else
-            {
-                query = query.OrderByDescending(r => r.CreatedAt);
-            }
-
-            var items = await query.Skip(req.Page * req.Size).Take(req.Size).ToListAsync();
-
-            var roleIds = items.Select(r => r.Id).ToList();
-            var allRoleFeatures = await _context.RoleFeature
-                .Where(rf => roleIds.Contains(rf.IdRole))
-                .ToListAsync();
-
-            var dtos = items.Select(r => MapToDto(r, allRoleFeatures
-                .Where(rf => rf.IdRole == r.Id)
-                .Select(rf => new RoleFeatureDto
-                {
-                    IdFeature = rf.IdFeature,
-                    Create = rf.Create,
-                    View = rf.View,
-                    Delete = rf.Delete,
-                    Activate = rf.Activate
-                }).ToList())).ToList();
-
-            return Ok(new SearchResult<RoleResponseDto>(dtos, total, req.Page, req.Size));
         }
     }
 }

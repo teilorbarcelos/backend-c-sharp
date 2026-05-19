@@ -50,18 +50,12 @@ namespace MageBackend.Features.Product
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var query = _context.Product.Where(p => !p.IsDeleted);
+            var result = await _context.Product
+                .Where(p => !p.IsDeleted)
+                .ApplyActiveFilter(req.Active, forceDefaultTrue: true)
+                .ExecuteSearchAsync(req, MapToDto);
 
-            if (req.Active.HasValue)
-            {
-                query = query.Where(p => p.Active == req.Active.Value);
-            }
-            else
-            {
-                query = query.Where(p => p.Active == true);
-            }
-
-            return await ExecuteSearch(query, req);
+            return Ok(result);
         }
 
         [HttpGet("all")]
@@ -73,14 +67,12 @@ namespace MageBackend.Features.Product
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var query = _context.Product.Where(p => !p.IsDeleted);
+            var result = await _context.Product
+                .Where(p => !p.IsDeleted)
+                .ApplyActiveFilter(req.Active)
+                .ExecuteSearchAsync(req, MapToDto);
 
-            if (req.Active.HasValue)
-            {
-                query = query.Where(p => p.Active == req.Active.Value);
-            }
-
-            return await ExecuteSearch(query, req);
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
@@ -226,55 +218,6 @@ namespace MageBackend.Features.Product
                 CreatedAt = product.CreatedAt,
                 UpdatedAt = product.UpdatedAt
             };
-        }
-
-        private async Task<IActionResult> ExecuteSearch(IQueryable<Database.Product> query, SearchRequest req)
-        {
-            // Apply SearchWord
-            if (!string.IsNullOrEmpty(req.SearchWord) && !string.IsNullOrEmpty(req.SearchFields))
-            {
-                var fields = req.SearchFields.Split(',').Select(f => f.Trim().ToLower()).ToList();
-                query = query.Where(p =>
-                    (fields.Contains("name") && p.Name.Contains(req.SearchWord)) ||
-                    (fields.Contains("sku") && p.Sku.Contains(req.SearchWord)) ||
-                    (fields.Contains("category") && p.Category.Contains(req.SearchWord))
-                );
-            }
-
-            // Apply Date Filters
-            if (req.CreatedAtStart.HasValue)
-            {
-                query = query.Where(p => p.CreatedAt >= req.CreatedAtStart.Value);
-            }
-            if (req.CreatedAtEnd.HasValue)
-            {
-                query = query.Where(p => p.CreatedAt <= req.CreatedAtEnd.Value);
-            }
-
-            var total = await query.CountAsync();
-
-            // Apply Sorting
-            if (!string.IsNullOrEmpty(req.OrderBy))
-            {
-                var isDesc = req.OrderDirection.Equals("desc", StringComparison.OrdinalIgnoreCase);
-                query = req.OrderBy.ToLower() switch
-                {
-                    "name" => isDesc ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
-                    "sku" => isDesc ? query.OrderByDescending(p => p.Sku) : query.OrderBy(p => p.Sku),
-                    "category" => isDesc ? query.OrderByDescending(p => p.Category) : query.OrderBy(p => p.Category),
-                    _ => isDesc ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt)
-                };
-            }
-            else
-            {
-                query = query.OrderByDescending(p => p.CreatedAt);
-            }
-
-            // Apply Pagination
-            var items = await query.Skip(req.Page * req.Size).Take(req.Size).ToListAsync();
-
-            var dtos = items.Select(MapToDto).ToList();
-            return Ok(new SearchResult<ProductResponseDto>(dtos, total, req.Page, req.Size));
         }
     }
 }

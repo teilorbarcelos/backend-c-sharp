@@ -31,19 +31,11 @@ namespace MageBackend.Features.Feature
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var query = _context.Feature.AsQueryable();
+            var result = await _context.Feature
+                .ApplyActiveFilter(req.Active, forceDefaultTrue: true)
+                .ExecuteSearchAsync(req, f => f);
 
-            // Default filters
-            if (req.Active.HasValue)
-            {
-                query = query.Where(f => f.Active == req.Active.Value);
-            }
-            else
-            {
-                query = query.Where(f => f.Active == true);
-            }
-
-            return await ExecuteSearch(query, req);
+            return Ok(result);
         }
 
         [HttpGet("all")]
@@ -55,14 +47,11 @@ namespace MageBackend.Features.Feature
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
             if (err != null) return ErrorResponse(err);
 
-            var query = _context.Feature.AsQueryable();
+            var result = await _context.Feature
+                .ApplyActiveFilter(req.Active)
+                .ExecuteSearchAsync(req, f => f);
 
-            if (req.Active.HasValue)
-            {
-                query = query.Where(f => f.Active == req.Active.Value);
-            }
-
-            return await ExecuteSearch(query, req);
+            return Ok(result);
         }
 
         [HttpGet("{id}")]
@@ -170,48 +159,6 @@ namespace MageBackend.Features.Feature
 
             await _context.SaveChangesAsync();
             return Ok(feature);
-        }
-
-        private async Task<IActionResult> ExecuteSearch(IQueryable<Database.Feature> query, SearchRequest req)
-        {
-            // Apply SearchWord
-            if (!string.IsNullOrEmpty(req.SearchWord))
-            {
-                query = query.Where(f => f.Name.Contains(req.SearchWord) || (f.Description != null && f.Description.Contains(req.SearchWord)));
-            }
-
-            // Apply Date Filters
-            if (req.CreatedAtStart.HasValue)
-            {
-                query = query.Where(f => f.CreatedAt >= req.CreatedAtStart.Value);
-            }
-            if (req.CreatedAtEnd.HasValue)
-            {
-                query = query.Where(f => f.CreatedAt <= req.CreatedAtEnd.Value);
-            }
-
-            var total = await query.CountAsync();
-
-            // Apply Sorting
-            if (!string.IsNullOrEmpty(req.OrderBy))
-            {
-                var isDesc = req.OrderDirection.Equals("desc", StringComparison.OrdinalIgnoreCase);
-                query = req.OrderBy.ToLower() switch
-                {
-                    "name" => isDesc ? query.OrderByDescending(f => f.Name) : query.OrderBy(f => f.Name),
-                    "description" => isDesc ? query.OrderByDescending(f => f.Description) : query.OrderBy(f => f.Description),
-                    _ => isDesc ? query.OrderByDescending(f => f.CreatedAt) : query.OrderBy(f => f.CreatedAt)
-                };
-            }
-            else
-            {
-                query = query.OrderByDescending(f => f.CreatedAt);
-            }
-
-            // Apply Pagination
-            var items = await query.Skip(req.Page * req.Size).Take(req.Size).ToListAsync();
-
-            return Ok(new SearchResult<Database.Feature>(items, total, req.Page, req.Size));
         }
     }
 }
