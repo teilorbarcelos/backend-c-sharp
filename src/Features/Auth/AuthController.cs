@@ -70,7 +70,7 @@ namespace MageBackend.Features.Auth
             public string Id { get; set; } = string.Empty;
             public string Name { get; set; } = string.Empty;
             public string Email { get; set; } = string.Empty;
-            public AuthUserRoleDto? Role { get; set; }
+            public AuthUserRoleDto Role { get; set; } = new();
         }
 
         public class AuthResponseDto
@@ -81,6 +81,9 @@ namespace MageBackend.Features.Auth
         }
 
         [HttpPost("login")]
+        [ProducesResponseType(typeof(AuthResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password))
@@ -108,6 +111,9 @@ namespace MageBackend.Features.Auth
         }
 
         [HttpPost("refresh")]
+        [ProducesResponseType(typeof(AuthResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
         public async Task<IActionResult> Refresh([FromBody] RefreshDto dto)
         {
             if (string.IsNullOrEmpty(dto.RefreshToken))
@@ -155,6 +161,8 @@ namespace MageBackend.Features.Auth
         }
 
         [HttpGet("me")]
+        [ProducesResponseType(typeof(AuthResponseDto), 200)]
+        [ProducesResponseType(401)]
         public async Task<IActionResult> GetMe()
         {
             var userId = User.FindFirst("id")?.Value;
@@ -197,6 +205,8 @@ namespace MageBackend.Features.Auth
         }
 
         [HttpPost("password/request")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> RequestPasswordReset([FromBody] ResetRequestDto dto)
         {
             if (string.IsNullOrEmpty(dto.Email))
@@ -226,6 +236,10 @@ namespace MageBackend.Features.Auth
         }
 
         [HttpPost("password/validate")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> ValidateResetToken([FromBody] ResetValidateDto dto)
         {
             if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Token))
@@ -256,6 +270,10 @@ namespace MageBackend.Features.Auth
         }
 
         [HttpPost("password/change")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
             if (string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Token) || string.IsNullOrEmpty(dto.Password))
@@ -294,6 +312,7 @@ namespace MageBackend.Features.Auth
         }
 
         [HttpPost("logout")]
+        [ProducesResponseType(200)]
         public async Task<IActionResult> Logout()
         {
             var userId = User.FindFirst("id")?.Value;

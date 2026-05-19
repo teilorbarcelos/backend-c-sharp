@@ -18,6 +18,7 @@ namespace MageBackend.Features.Debug
         );
 
         [HttpGet("pdf")]
+        [ProducesResponseType(typeof(FileResult), 200)]
         public IActionResult GetPdf()
         {
             Response.Headers["Content-Disposition"] = "inline; filename=\"test.pdf\"";
@@ -31,6 +32,7 @@ namespace MageBackend.Features.Debug
         }
 
         [HttpPost("pdf")]
+        [ProducesResponseType(typeof(FileResult), 200)]
         public IActionResult PostPdf([FromBody] PdfPostRequest request)
         {
             Response.Headers["Content-Disposition"] = "attachment; filename=\"test.pdf\"";

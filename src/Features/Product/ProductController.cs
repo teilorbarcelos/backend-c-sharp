@@ -43,6 +43,8 @@ namespace MageBackend.Features.Product
 
         [HttpGet]
         [CheckPermission("product", "view")]
+        [ProducesResponseType(typeof(SearchResult<ProductResponseDto>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> List()
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -64,6 +66,8 @@ namespace MageBackend.Features.Product
 
         [HttpGet("all")]
         [CheckPermission("product", "view")]
+        [ProducesResponseType(typeof(SearchResult<ProductResponseDto>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> ListAll()
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -81,6 +85,8 @@ namespace MageBackend.Features.Product
 
         [HttpGet("{id}")]
         [CheckPermission("product", "view")]
+        [ProducesResponseType(typeof(ProductResponseDto), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> GetById(string id)
         {
             var product = await _context.Product.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
@@ -101,6 +107,8 @@ namespace MageBackend.Features.Product
 
         [HttpPost]
         [CheckPermission("product", "create")]
+        [ProducesResponseType(typeof(ProductResponseDto), 201)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateProductDto dto)
         {
             if (string.IsNullOrEmpty(dto.Name) || string.IsNullOrEmpty(dto.Sku) || string.IsNullOrEmpty(dto.Category))
@@ -136,6 +144,9 @@ namespace MageBackend.Features.Product
 
         [HttpPut("{id}")]
         [CheckPermission("product", "create")]
+        [ProducesResponseType(typeof(ProductResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] CreateProductDto dto)
         {
             var product = await _context.Product.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
@@ -161,6 +172,8 @@ namespace MageBackend.Features.Product
 
         [HttpDelete("{id}")]
         [CheckPermission("product", "delete")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Delete(string id)
         {
             var product = await _context.Product.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
@@ -183,6 +196,8 @@ namespace MageBackend.Features.Product
 
         [HttpPatch("{id}/status")]
         [CheckPermission("product", "activate")]
+        [ProducesResponseType(typeof(ProductResponseDto), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> ToggleStatus(string id, [FromBody] ToggleStatusDto dto)
         {
             var product = await _context.Product.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);

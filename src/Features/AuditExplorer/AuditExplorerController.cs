@@ -22,9 +22,22 @@ namespace MageBackend.Features.AuditExplorer
         }
 
         [HttpGet("admin/logs")]
+        [ProducesResponseType(typeof(string), 200)]
         public IActionResult GetView()
         {
             return Content(AuditExplorerView.Html, "text/html");
+        }
+
+        public class AuditLogsResponse
+        {
+            public List<AuditItemDto> Items { get; set; } = new();
+            public int Total { get; set; }
+        }
+
+        public class ErrorLogsResponse
+        {
+            public List<ErrorItemDto> Items { get; set; } = new();
+            public int Total { get; set; }
         }
 
         public class AuditItemDto
@@ -61,6 +74,9 @@ namespace MageBackend.Features.AuditExplorer
 
         [HttpGet("admin/api/audit")]
         [AuthorizeAdmin]
+        [ProducesResponseType(typeof(AuditLogsResponse), 200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
         public async Task<IActionResult> GetAuditLogs([FromQuery] int page = 0, [FromQuery] int size = 15, [FromQuery] string search = "")
         {
             var query = _context.Audit.AsQueryable();
@@ -122,6 +138,9 @@ namespace MageBackend.Features.AuditExplorer
 
         [HttpGet("admin/api/errors")]
         [AuthorizeAdmin]
+        [ProducesResponseType(typeof(ErrorLogsResponse), 200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(403)]
         public async Task<IActionResult> GetErrorLogs([FromQuery] int page = 0, [FromQuery] int size = 15, [FromQuery] string search = "")
         {
             var query = _context.ErrorLog.AsQueryable();

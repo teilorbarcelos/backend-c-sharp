@@ -44,6 +44,8 @@ namespace MageBackend.Features.User
 
         [HttpGet]
         [CheckPermission("user", "view")]
+        [ProducesResponseType(typeof(SearchResult<UserResponseDto>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> List()
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -65,6 +67,8 @@ namespace MageBackend.Features.User
 
         [HttpGet("all")]
         [CheckPermission("user", "view")]
+        [ProducesResponseType(typeof(SearchResult<UserResponseDto>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> ListAll()
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -82,6 +86,8 @@ namespace MageBackend.Features.User
 
         [HttpGet("{id}")]
         [CheckPermission("user", "view")]
+        [ProducesResponseType(typeof(UserResponseDto), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> GetById(string id)
         {
             var user = await _context.User.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
@@ -104,6 +110,8 @@ namespace MageBackend.Features.User
 
         [HttpPost]
         [CheckPermission("user", "create")]
+        [ProducesResponseType(typeof(UserResponseDto), 201)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
         {
             if (string.IsNullOrEmpty(dto.Name) || string.IsNullOrEmpty(dto.Email) || string.IsNullOrEmpty(dto.Password) || string.IsNullOrEmpty(dto.IdRole))
@@ -176,6 +184,9 @@ namespace MageBackend.Features.User
 
         [HttpPut("{id}")]
         [CheckPermission("user", "create")]
+        [ProducesResponseType(typeof(UserResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto dto)
         {
             var user = await _context.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
@@ -240,6 +251,9 @@ namespace MageBackend.Features.User
 
         [HttpDelete("{id}")]
         [CheckPermission("user", "delete")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Delete(string id)
         {
             var user = await _context.User.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
@@ -287,6 +301,9 @@ namespace MageBackend.Features.User
 
         [HttpPatch("{id}/status")]
         [CheckPermission("user", "activate")]
+        [ProducesResponseType(typeof(UserResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> ToggleStatus(string id, [FromBody] ToggleStatusDto dto)
         {
             var user = await _context.User.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);

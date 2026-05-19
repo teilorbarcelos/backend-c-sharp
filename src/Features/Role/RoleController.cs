@@ -57,6 +57,7 @@ namespace MageBackend.Features.Role
 
         [HttpGet("features")]
         [CheckPermission("role", "view")]
+        [ProducesResponseType(typeof(List<Database.Feature>), 200)]
         public async Task<IActionResult> ListFeatures()
         {
             var features = await _context.Feature.Where(f => f.Active).ToListAsync();
@@ -65,6 +66,8 @@ namespace MageBackend.Features.Role
 
         [HttpGet]
         [CheckPermission("role", "view")]
+        [ProducesResponseType(typeof(SearchResult<RoleResponseDto>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> List()
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -86,6 +89,8 @@ namespace MageBackend.Features.Role
 
         [HttpGet("all")]
         [CheckPermission("role", "view")]
+        [ProducesResponseType(typeof(SearchResult<RoleResponseDto>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> ListAll()
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -103,6 +108,8 @@ namespace MageBackend.Features.Role
 
         [HttpGet("{id}")]
         [CheckPermission("role", "view")]
+        [ProducesResponseType(typeof(RoleResponseDto), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> GetById(string id)
         {
             var role = await _context.Role.Where(r => r.Id == id && !r.IsDeleted).FirstOrDefaultAsync();
@@ -131,6 +138,8 @@ namespace MageBackend.Features.Role
 
         [HttpPost]
         [CheckPermission("role", "create")]
+        [ProducesResponseType(typeof(RoleResponseDto), 201)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
         {
             if (string.IsNullOrEmpty(dto.Name)) return BadRequest(new { message = "Name is required" });
@@ -169,6 +178,9 @@ namespace MageBackend.Features.Role
 
         [HttpPut("{id}")]
         [CheckPermission("role", "create")]
+        [ProducesResponseType(typeof(RoleResponseDto), 200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] CreateRoleDto dto)
         {
             var role = await _context.Role.Where(r => r.Id == id && !r.IsDeleted).FirstOrDefaultAsync();
@@ -224,6 +236,8 @@ namespace MageBackend.Features.Role
 
         [HttpDelete("{id}")]
         [CheckPermission("role", "delete")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Delete(string id)
         {
             var role = await _context.Role.Where(r => r.Id == id && !r.IsDeleted).FirstOrDefaultAsync();
@@ -247,6 +261,8 @@ namespace MageBackend.Features.Role
 
         [HttpPatch("{id}/status")]
         [CheckPermission("role", "activate")]
+        [ProducesResponseType(typeof(RoleResponseDto), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> ToggleStatus(string id, [FromBody] ToggleStatusDto dto)
         {
             var role = await _context.Role.Where(r => r.Id == id && !r.IsDeleted).FirstOrDefaultAsync();

@@ -24,6 +24,8 @@ namespace MageBackend.Features.Feature
 
         [HttpGet]
         [CheckPermission("feature", "view")]
+        [ProducesResponseType(typeof(SearchResult<Database.Feature>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> List([FromQuery] string? active)
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -46,6 +48,8 @@ namespace MageBackend.Features.Feature
 
         [HttpGet("all")]
         [CheckPermission("feature", "view")]
+        [ProducesResponseType(typeof(SearchResult<Database.Feature>), 200)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> ListAll()
         {
             var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
@@ -63,6 +67,8 @@ namespace MageBackend.Features.Feature
 
         [HttpGet("{id}")]
         [CheckPermission("feature", "view")]
+        [ProducesResponseType(typeof(Database.Feature), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> GetById(string id)
         {
             var feature = await _context.Feature.FindAsync(id);
@@ -79,6 +85,8 @@ namespace MageBackend.Features.Feature
 
         [HttpPost]
         [CheckPermission("feature", "create")]
+        [ProducesResponseType(typeof(Database.Feature), 201)]
+        [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateFeatureDto dto)
         {
             if (string.IsNullOrEmpty(dto.Id) || string.IsNullOrEmpty(dto.Name))
@@ -113,6 +121,8 @@ namespace MageBackend.Features.Feature
 
         [HttpPut("{id}")]
         [CheckPermission("feature", "create")]
+        [ProducesResponseType(typeof(Database.Feature), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateFeatureDto dto)
         {
             var feature = await _context.Feature.FindAsync(id);
@@ -128,6 +138,8 @@ namespace MageBackend.Features.Feature
 
         [HttpDelete("{id}")]
         [CheckPermission("feature", "delete")]
+        [ProducesResponseType(204)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> Delete(string id)
         {
             var feature = await _context.Feature.FindAsync(id);
@@ -146,6 +158,8 @@ namespace MageBackend.Features.Feature
 
         [HttpPatch("{id}/status")]
         [CheckPermission("feature", "activate")]
+        [ProducesResponseType(typeof(Database.Feature), 200)]
+        [ProducesResponseType(404)]
         public async Task<IActionResult> ToggleStatus(string id, [FromBody] ToggleStatusDto dto)
         {
             var feature = await _context.Feature.FindAsync(id);
