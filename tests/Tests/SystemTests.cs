@@ -76,7 +76,7 @@ namespace MageBackend.Tests
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var errorLog = await dbContext.ErrorLog
-                    .FirstOrDefaultAsync(e => e.IdUser == loginData.User.Id && e.Source.Contains("POST /v1/role"));
+                    .FirstOrDefaultAsync(e => e.IdUser == loginData.User.Id && e.Source != null && e.Source.Contains("POST /v1/role"));
                 Assert.NotNull(errorLog);
                 Assert.NotNull(errorLog.ErrorMessage);
                 Assert.Contains("validation", errorLog.ErrorMessage.ToLower());

@@ -48,6 +48,66 @@ namespace MageBackend.Tests
             Environment.SetEnvironmentVariable("RABBIT_URL", originalUrl);
         }
 
+        [Fact]
+        public void GivenMessagingDisabled_WhenConnectingPublishingOrSubscribing_ThenReturnsEarly()
+        {
+            var originalEnabled = Environment.GetEnvironmentVariable("MESSAGING_ENABLED");
+            try
+            {
+                Environment.SetEnvironmentVariable("MESSAGING_ENABLED", "false");
+                var provider = new RabbitMQProvider();
+                provider.Connect();
+                
+                provider.Publish("test_queue_disabled", new TestMessage { Content = "test" });
+                provider.Subscribe<TestMessage>("test_queue_disabled", msg => {});
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("MESSAGING_ENABLED", originalEnabled);
+            }
+        }
+
+        [Fact]
+        public void GivenMessagingEnabledButNotConnected_WhenPublishingOrSubscribing_ThenThrowsInvalidOperation()
+        {
+            var originalEnabled = Environment.GetEnvironmentVariable("MESSAGING_ENABLED");
+            try
+            {
+                Environment.SetEnvironmentVariable("MESSAGING_ENABLED", "true");
+                var provider = new RabbitMQProvider();
+                
+                Assert.Throws<InvalidOperationException>(() => provider.Publish("test_queue", new TestMessage { Content = "test" }));
+                Assert.Throws<InvalidOperationException>(() => provider.Subscribe<TestMessage>("test_queue", msg => {}));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("MESSAGING_ENABLED", originalEnabled);
+            }
+        }
+
+        [Fact]
+        public void GivenRabbitProvider_WhenMessageCallbackFails_ThenHandlesException()
+        {
+            var provider = new RabbitMQProvider();
+            provider.Connect();
+
+            var resetEvent = new ManualResetEventSlim(false);
+
+            provider.Subscribe<TestMessage>("test_error_queue", msg =>
+            {
+                resetEvent.Set();
+                throw new Exception("Simulated message handling failure");
+            });
+
+            provider.Publish("test_error_queue", new TestMessage { Content = "Trigger exception" });
+
+            var hit = resetEvent.Wait(TimeSpan.FromSeconds(5));
+            Assert.True(hit, "Did not trigger callback");
+
+            provider.Disconnect();
+            provider.Dispose();
+        }
+
         public class TestMessage
         {
             public string Content { get; set; } = string.Empty;

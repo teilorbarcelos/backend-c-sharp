@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MageBackend.Database;
+using MageBackend.Core.Filters;
+using MageBackend.Core.Middleware;
 using MageBackend.Features.Auth;
 using MageBackend.Features.User;
 using MageBackend.Features.Role;
@@ -358,5 +360,103 @@ namespace MageBackend.Tests
             ClearAuthHeader();
         }
 
+        [Fact]
+        public async Task GivenUnauthenticatedUser_WhenAccessingPermissionProtectedEndpoint_ThenReturns401()
+        {
+            var resp = await _client.GetAsync("/v1/user");
+            Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+        }
+
+        [Fact]
+        public async Task GivenAdminRole_WhenListingRoles_ThenReturnsList()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var resp = await _client.GetAsync("/v1/role?page=0&size=10");
+            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+
+            var respAll = await _client.GetAsync("/v1/role/all");
+            Assert.Equal(HttpStatusCode.OK, respAll.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenAdminRole_WhenUpdatingRoleWithoutPermissions_ThenRetainsExistingPermissions()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+
+            var rolePayload = new
+            {
+                name = $"Update Perm Role {uniqueSuffix}",
+                description = "To be updated",
+                permissions = new[]
+                {
+                    new
+                    {
+                        id_feature = "product",
+                        create = true,
+                        view = true,
+                        delete = false,
+                        activate = false
+                    }
+                }
+            };
+            var roleResp = await _client.PostAsJsonAsync("/v1/role", rolePayload);
+            var roleId = (await roleResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+
+            var updatePayload = new
+            {
+                name = $"Updated Perm Role {uniqueSuffix}",
+                description = "Retained permissions description"
+            };
+            var updateResp = await _client.PutAsJsonAsync($"/v1/role/{roleId}", updatePayload);
+            Assert.Equal(HttpStatusCode.OK, updateResp.StatusCode);
+
+            var getResp = await _client.GetAsync($"/v1/role/{roleId}");
+            Assert.Equal(HttpStatusCode.OK, getResp.StatusCode);
+            var data = await getResp.Content.ReadFromJsonAsync<JsonElement>();
+            var roleFeatures = data.GetProperty("RoleFeature");
+            Assert.True(roleFeatures.GetArrayLength() == 1);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public void GivenInvalidAction_WhenAuthorizing_ThenThrows403AppException()
+        {
+            var attr = new CheckPermissionAttribute("product", "invalid_action");
+            
+            var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+            
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("id", "123"),
+                new System.Security.Claims.Claim("email", "test@test.com"),
+                new System.Security.Claims.Claim("permissions", JsonSerializer.Serialize(new List<PermissionClaim>
+                {
+                    new PermissionClaim { Feature = "product", Create = true, View = true, Delete = true, Activate = true }
+                }))
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuth");
+            httpContext.User = new System.Security.Claims.ClaimsPrincipal(identity);
+
+            var actionContext = new Microsoft.AspNetCore.Mvc.ActionContext(
+                httpContext,
+                new Microsoft.AspNetCore.Routing.RouteData(),
+                new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor()
+            );
+            var filterContext = new Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext(
+                actionContext,
+                new List<Microsoft.AspNetCore.Mvc.Filters.IFilterMetadata>()
+            );
+
+            var exception = Assert.Throws<AppException>(() => attr.OnAuthorization(filterContext));
+            Assert.Equal(403, exception.StatusCode);
+            Assert.Contains("Sem permissão", exception.Message);
+        }
     }
 }

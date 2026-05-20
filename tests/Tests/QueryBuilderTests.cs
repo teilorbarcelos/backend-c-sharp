@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MageBackend.Database;
+using MageBackend.Core;
 using MageBackend.Features.Auth;
 using MageBackend.Features.User;
 using MageBackend.Features.Role;
@@ -255,5 +256,47 @@ namespace MageBackend.Tests
             ClearAuthHeader();
         }
 
+        [Fact]
+        public async Task GivenAlternativeActiveValues_WhenListing_ThenParsesCorrectly()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var resp1 = await _client.GetAsync("/v1/user/all?active=1");
+            Assert.Equal(HttpStatusCode.OK, resp1.StatusCode);
+
+            var resp0 = await _client.GetAsync("/v1/user/all?active=0");
+            Assert.Equal(HttpStatusCode.OK, resp0.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenInvalidEndDate_WhenListing_ThenReturnsBadRequest()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var resp = await _client.GetAsync("/v1/user/all?createdAt_end=invalid-date");
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public void GivenQueryable_WhenApplyingSearchWithNonExistentField_ThenSkipsField()
+        {
+            var query = new List<Product>().AsQueryable();
+            var result = query.ApplySearch("test", "nonexistentfield,name");
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void GivenQueryableWithoutCreatedAt_WhenOrderingWithoutField_ThenReturnsOriginalQuery()
+        {
+            var query = new List<string>().AsQueryable();
+            var result = query.ApplyOrdering("", "desc");
+            Assert.NotNull(result);
+        }
     }
 }

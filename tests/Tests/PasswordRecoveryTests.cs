@@ -49,7 +49,9 @@ namespace MageBackend.Tests
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var user = await dbContext.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Email == "admin@email.com");
-                token = user.Auth.RequestPasswordToken;
+                Assert.NotNull(user);
+                Assert.NotNull(user.Auth);
+                token = user.Auth.RequestPasswordToken ?? "";
             }
             await _client.PostAsJsonAsync("/v1/auth/password/change", new { email = "admin@email.com", token, password = "admin@123" });
         }
@@ -86,6 +88,32 @@ namespace MageBackend.Tests
 
             var unauthChange = await _client.PostAsJsonAsync("/v1/auth/password/change", new { email = "admin@email.com", token = "000000", password = "NewPassword123!" });
             Assert.Equal(HttpStatusCode.Unauthorized, unauthChange.StatusCode);
+        }
+
+        [Fact]
+        public async Task GivenExpiredToken_WhenValidatingOrChanging_ThenReturnsUnauthorized()
+        {
+            var reqResp = await _client.PostAsJsonAsync("/v1/auth/password/request", new { email = "admin@email.com" });
+            Assert.Equal(HttpStatusCode.OK, reqResp.StatusCode);
+
+            string token = "";
+            using (var scope = _fixture.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var user = await dbContext.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Email == "admin@email.com");
+                Assert.NotNull(user);
+                Assert.NotNull(user.Auth);
+                token = user.Auth.RequestPasswordToken ?? "";
+                
+                user.Auth.RequestPasswordExpiration = DateTime.UtcNow.AddMinutes(-5);
+                await dbContext.SaveChangesAsync();
+            }
+
+            var valResp = await _client.PostAsJsonAsync("/v1/auth/password/validate", new { email = "admin@email.com", token });
+            Assert.Equal(HttpStatusCode.Unauthorized, valResp.StatusCode);
+
+            var changeResp = await _client.PostAsJsonAsync("/v1/auth/password/change", new { email = "admin@email.com", token, password = "NewPassword123!" });
+            Assert.Equal(HttpStatusCode.Unauthorized, changeResp.StatusCode);
         }
     }
 }

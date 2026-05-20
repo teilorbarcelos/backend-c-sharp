@@ -595,5 +595,71 @@ namespace MageBackend.Tests
             ClearAuthHeader();
         }
 
+        [Fact]
+        public async Task GivenInvalidUserCreation_WhenCreatingOrUpdating_ThenHandlesErrors()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+
+            var createNonExistentRoleResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "No Role User",
+                email = $"norole_{uniqueSuffix}@email.com",
+                password = "Password123!",
+                id_role = "non-existent-role"
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, createNonExistentRoleResp.StatusCode);
+
+            var userEmail = $"user_errors_{uniqueSuffix}@email.com";
+            var userResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "User Errors Test",
+                email = userEmail,
+                password = "Password123!",
+                id_role = "administrator"
+            });
+            var userData = await userResp.Content.ReadFromJsonAsync<JsonElement>();
+            var userId = userData.GetProperty("id").GetString()!;
+
+            var valFailResp = await _client.PutAsJsonAsync($"/v1/user/{userId}", new { password = "123" });
+            Assert.Equal(HttpStatusCode.BadRequest, valFailResp.StatusCode);
+
+            var emailInUseResp = await _client.PutAsJsonAsync($"/v1/user/{userId}", new { email = "admin@email.com" });
+            Assert.Equal(HttpStatusCode.BadRequest, emailInUseResp.StatusCode);
+
+            var updateNonExistentRoleResp = await _client.PutAsJsonAsync($"/v1/user/{userId}", new { id_role = "non-existent-role" });
+            Assert.Equal(HttpStatusCode.BadRequest, updateNonExistentRoleResp.StatusCode);
+
+            var updatePasswordResp = await _client.PutAsJsonAsync($"/v1/user/{userId}", new { password = "NewPassword123!" });
+            Assert.Equal(HttpStatusCode.OK, updatePasswordResp.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenInitialAdminUser_WhenUpdatingPasswordDeletingOrDeactivating_ThenEnforcesProtectionRules()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var adminId = loginData.User.Id;
+
+            var updatePasswordResp = await _client.PutAsJsonAsync($"/v1/user/{adminId}", new { password = "admin@123" });
+            Assert.Equal(HttpStatusCode.OK, updatePasswordResp.StatusCode);
+
+            // Re-login because password update invalidates all active sessions
+            var reloginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(reloginData.Token);
+
+            var deleteResp = await _client.DeleteAsync($"/v1/user/{adminId}");
+            Assert.Equal(HttpStatusCode.BadRequest, deleteResp.StatusCode);
+
+            var toggleResp = await _client.PatchAsJsonAsync($"/v1/user/{adminId}/status", new { active = false });
+            Assert.Equal(HttpStatusCode.BadRequest, toggleResp.StatusCode);
+
+            ClearAuthHeader();
+        }
     }
 }
