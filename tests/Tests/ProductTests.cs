@@ -84,6 +84,10 @@ namespace MageBackend.Tests
             var updateResp = await _client.PutAsJsonAsync($"/v1/product/{prod1Id}", duplicateSkuPayload);
             Assert.Equal(HttpStatusCode.BadRequest, updateResp.StatusCode);
 
+            var uniqueSkuPayload = new { name = "Prod 1 Updated Unique", sku = $"sku-c3-{uniqueSuffix}", category = "cat-1", price = 15.0 };
+            var updateUniqueResp = await _client.PutAsJsonAsync($"/v1/product/{prod1Id}", uniqueSkuPayload);
+            Assert.Equal(HttpStatusCode.OK, updateUniqueResp.StatusCode);
+
             ClearAuthHeader();
         }
     }

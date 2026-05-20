@@ -33,4 +33,6 @@ Thumbs.db
 coverage.json
 coverage.cobertura.xml
 coveragereport/
+uncovered_lines.txt
 scratch/
+*tests/coverage.json

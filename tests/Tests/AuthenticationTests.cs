@@ -312,5 +312,163 @@ namespace MageBackend.Tests
             Assert.Equal(HttpStatusCode.Unauthorized, meResp.StatusCode);
             ClearAuthHeader();
         }
+
+        [Fact]
+        public async Task GivenEmptyRefreshToken_WhenRefreshing_ThenReturnsBadRequest()
+        {
+            var resp = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken = "" });
+            Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        }
+
+        [Fact]
+        public async Task GivenSoftDeletedUser_WhenRefreshing_ThenReturnsUnauthorized()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+            var email = $"refresh_del_{uniqueSuffix}@email.com";
+            var password = "Password123!";
+
+            var createResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "Refresh Delete User",
+                email = email,
+                password = password,
+                id_role = "administrator"
+            });
+            var userData = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+            var userId = userData.GetProperty("id").GetString()!;
+
+            ClearAuthHeader();
+            var userLogin = await LoginAsync(email, password);
+
+            // Soft-delete the user via admin
+            var adminLogin = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(adminLogin.Token);
+            await _client.DeleteAsync($"/v1/user/{userId}");
+            ClearAuthHeader();
+
+            // Try to refresh with the deleted user's token
+            var refreshResp = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken = userLogin.RefreshToken });
+            Assert.Equal(HttpStatusCode.Unauthorized, refreshResp.StatusCode);
+        }
+
+        [Fact]
+        public async Task GivenSoftDeletedUser_WhenRequestingMe_ThenReturnsUnauthorized()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+            var email = $"me_del_{uniqueSuffix}@email.com";
+            var password = "Password123!";
+
+            var createResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "Me Delete User",
+                email = email,
+                password = password,
+                id_role = "administrator"
+            });
+            var userData = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+            var userId = userData.GetProperty("id").GetString()!;
+
+            ClearAuthHeader();
+            var userLogin = await LoginAsync(email, password);
+
+            // Soft-delete the user via admin
+            var adminLogin = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(adminLogin.Token);
+            await _client.DeleteAsync($"/v1/user/{userId}");
+
+            // Try /me with the deleted user's token
+            SetAuthHeader(userLogin.Token);
+            var meResp = await _client.GetAsync("/v1/auth/me");
+            Assert.Equal(HttpStatusCode.Unauthorized, meResp.StatusCode);
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenDeactivatedUser_WhenRefreshingWithActiveSession_ThenReturnsUnauthorized()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+            var email = $"refresh_deact_{uniqueSuffix}@email.com";
+            var password = "Password123!";
+
+            var createResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "Refresh Deact User",
+                email = email,
+                password = password,
+                id_role = "administrator"
+            });
+            var userData = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+            var userId = userData.GetProperty("id").GetString()!;
+
+            ClearAuthHeader();
+            var userLogin = await LoginAsync(email, password);
+
+            // Directly update active to false in DB, avoiding the SessionManager invalidation
+            using (var scope = _fixture.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var user = await dbContext.User.FindAsync(userId);
+                if (user != null)
+                {
+                    user.Active = false;
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+
+            // Try to refresh with the token (Redis session is still active)
+            var refreshResp = await _client.PostAsJsonAsync("/v1/auth/refresh", new { refreshToken = userLogin.RefreshToken });
+            Assert.Equal(HttpStatusCode.Unauthorized, refreshResp.StatusCode);
+        }
+
+        [Fact]
+        public async Task GivenDeactivatedUser_WhenRequestingMeWithActiveSession_ThenReturnsUnauthorized()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+            var email = $"me_deact_{uniqueSuffix}@email.com";
+            var password = "Password123!";
+
+            var createResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "Me Deact User",
+                email = email,
+                password = password,
+                id_role = "administrator"
+            });
+            var userData = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+            var userId = userData.GetProperty("id").GetString()!;
+
+            ClearAuthHeader();
+            var userLogin = await LoginAsync(email, password);
+
+            // Directly update active to false in DB, avoiding the SessionManager invalidation
+            using (var scope = _fixture.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var user = await dbContext.User.FindAsync(userId);
+                if (user != null)
+                {
+                    user.Active = false;
+                    await dbContext.SaveChangesAsync();
+                }
+            }
+
+            // Try to access /me with the token (Redis session is still active)
+            SetAuthHeader(userLogin.Token);
+            var meResp = await _client.GetAsync("/v1/auth/me");
+            Assert.Equal(HttpStatusCode.Unauthorized, meResp.StatusCode);
+            ClearAuthHeader();
+        }
     }
 }

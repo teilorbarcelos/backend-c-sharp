@@ -661,5 +661,44 @@ namespace MageBackend.Tests
 
             ClearAuthHeader();
         }
+
+        [Fact]
+        public async Task GivenDuplicateEmail_WhenCreatingUser_ThenReturnsBadRequest()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var createResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "Duplicate Email User",
+                email = "admin@email.com",
+                password = "Password123!",
+                id_role = "administrator"
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, createResp.StatusCode);
+
+            var content = await createResp.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Contains("Email already in use.", content.GetProperty("message").GetString());
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenInvalidUserPayload_WhenCreatingUser_ThenReturnsBadRequest()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var createResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "Invalid User",
+                email = "not-an-email",
+                password = "123",
+                id_role = "administrator"
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, createResp.StatusCode);
+
+            ClearAuthHeader();
+        }
     }
 }

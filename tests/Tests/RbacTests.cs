@@ -426,6 +426,37 @@ namespace MageBackend.Tests
         }
 
         [Fact]
+        public void GivenAuthenticatedUserWithoutPermissionsClaim_WhenAuthorizing_ThenThrows403()
+        {
+            var attr = new CheckPermissionAttribute("product", "view");
+
+            var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+
+            // Authenticated user WITHOUT a "permissions" claim
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new System.Security.Claims.Claim("id", "123"),
+                new System.Security.Claims.Claim("email", "noperm@test.com")
+            };
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestAuth");
+            httpContext.User = new System.Security.Claims.ClaimsPrincipal(identity);
+
+            var actionContext = new Microsoft.AspNetCore.Mvc.ActionContext(
+                httpContext,
+                new Microsoft.AspNetCore.Routing.RouteData(),
+                new Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor()
+            );
+            var filterContext = new Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext(
+                actionContext,
+                new List<Microsoft.AspNetCore.Mvc.Filters.IFilterMetadata>()
+            );
+
+            var exception = Assert.Throws<AppException>(() => attr.OnAuthorization(filterContext));
+            Assert.Equal(403, exception.StatusCode);
+            Assert.Contains("Sem permissão", exception.Message);
+        }
+
+        [Fact]
         public void GivenInvalidAction_WhenAuthorizing_ThenThrows403AppException()
         {
             var attr = new CheckPermissionAttribute("product", "invalid_action");
@@ -457,6 +488,34 @@ namespace MageBackend.Tests
             var exception = Assert.Throws<AppException>(() => attr.OnAuthorization(filterContext));
             Assert.Equal(403, exception.StatusCode);
             Assert.Contains("Sem permissão", exception.Message);
+        }
+
+        [Fact]
+        public async Task GivenInvalidRolePayload_WhenUpdatingRole_ThenThrowsValidationException()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+            var createRoleResp = await _client.PostAsJsonAsync("/v1/role", new
+            {
+                name = $"Rbac Val {uniqueSuffix}",
+                description = "Role for validation test",
+                permissions = new List<object>()
+            });
+            var roleData = await createRoleResp.Content.ReadFromJsonAsync<JsonElement>();
+            var roleId = roleData.GetProperty("id").GetString()!;
+
+            // Update with invalid payload (empty name)
+            var updatePayload = new
+            {
+                name = "", // Invalid
+                description = "Updated role description"
+            };
+            var updateResp = await _client.PutAsJsonAsync($"/v1/role/{roleId}", updatePayload);
+            Assert.Equal(HttpStatusCode.BadRequest, updateResp.StatusCode);
+
+            ClearAuthHeader();
         }
     }
 }

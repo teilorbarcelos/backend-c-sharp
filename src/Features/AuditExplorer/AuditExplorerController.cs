@@ -119,7 +119,7 @@ namespace MageBackend.Features.AuditExplorer
                     CreatedAt = a.CreatedAt
                 }).ToListAsync();
 
-            return Ok(new { items, total });
+            return Ok(new AuditLogsResponse { Items = items, Total = total });
         }
 
         public record ErrorItemDto
@@ -169,7 +169,7 @@ namespace MageBackend.Features.AuditExplorer
                     CreatedAt = e.CreatedAt
                 }).ToListAsync();
 
-            return Ok(new { items, total });
+            return Ok(new ErrorLogsResponse { Items = items, Total = total });
         }
     }
 

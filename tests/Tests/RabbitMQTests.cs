@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using MageBackend.Infrastructure.Messaging;
+using RabbitMQ.Client;
 using Xunit;
 
 namespace MageBackend.Tests
@@ -103,6 +104,30 @@ namespace MageBackend.Tests
 
             var hit = resetEvent.Wait(TimeSpan.FromSeconds(5));
             Assert.True(hit, "Did not trigger callback");
+
+            provider.Disconnect();
+            provider.Dispose();
+        }
+
+        [Fact]
+        public void GivenRabbitProvider_WhenMessageBodyIsEmpty_ThenReturnsEarly()
+        {
+            var provider = new RabbitMQProvider();
+            provider.Connect();
+
+            var callbackTriggered = false;
+            provider.Subscribe<TestMessage>("test_empty_body_queue", msg =>
+            {
+                callbackTriggered = true;
+            });
+
+            var channelField = typeof(RabbitMQProvider).GetField("_channel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var channel = (RabbitMQ.Client.IModel)channelField!.GetValue(provider)!;
+            
+            channel.BasicPublish(exchange: "", routingKey: "test_empty_body_queue", basicProperties: null, body: ReadOnlyMemory<byte>.Empty);
+
+            Thread.Sleep(500);
+            Assert.False(callbackTriggered);
 
             provider.Disconnect();
             provider.Dispose();

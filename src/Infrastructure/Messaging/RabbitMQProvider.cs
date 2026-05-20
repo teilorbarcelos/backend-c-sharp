@@ -54,6 +54,7 @@ namespace MageBackend.Infrastructure.Messaging
                 {
                     throw new InvalidOperationException("RabbitMQ channel not initialized");
                 }
+                Log.Warning("[RabbitMQ] Publish ignored: messaging is disabled.");
                 return;
             }
 
@@ -87,6 +88,7 @@ namespace MageBackend.Infrastructure.Messaging
                 {
                     throw new InvalidOperationException("RabbitMQ channel not initialized");
                 }
+                Log.Warning("[RabbitMQ] Subscribe ignored: messaging is disabled.");
                 return;
             }
 
