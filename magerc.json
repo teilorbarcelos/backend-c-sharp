@@ -23,6 +23,10 @@
     {
       "name": "🧪 Run Integration Tests",
       "command": "make test"
+    },
+    {
+      "name": "📊 Code Coverage Report",
+      "command": "make coverage"
     }
   ]
 }

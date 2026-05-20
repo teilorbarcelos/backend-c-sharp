@@ -25,4 +25,9 @@ metrics-down:
 	docker compose -f docker-compose.metrics.yml down
 
 test:
-	dotnet test tests/MageBackend.Tests.csproj
+	dotnet test tests/MageBackend.Tests.csproj -m:1
+
+coverage:
+	@echo "📊 Gerando relatório de cobertura de código..."
+	dotnet test tests/MageBackend.Tests.csproj -m:1 /p:CollectCoverage=true
+	@echo "\n--- Resumo de Cobertura ---"
