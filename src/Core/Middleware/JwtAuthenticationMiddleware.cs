@@ -39,7 +39,7 @@ namespace MageBackend.Core.Middleware
                 }
                 catch
                 {
-                    // Token is invalid. Let downstream authorization filters handle it if the endpoint is protected.
+                    /* Token is invalid. Let downstream authorization filters handle it if the endpoint is protected. */
                 }
             }
 

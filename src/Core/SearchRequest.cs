@@ -74,7 +74,7 @@ namespace MageBackend.Core
                 foreach (var field in fields)
                 {
                     var normalized = field.Trim();
-                    // Allow mapping Role.name or Role.Name
+                    /* Allow mapping Role.name or Role.Name */
                     if (!allowedFields.Contains(normalized, StringComparer.OrdinalIgnoreCase))
                     {
                         errorMessage = $"Search on field '{field}' is not allowed or invalid.";
@@ -119,7 +119,7 @@ namespace MageBackend.Core
                     errorMessage = "Invalid format for createdAt_end. Use yyyy-MM-dd.";
                     return request;
                 }
-                request.CreatedAtEnd = dEnd.Date.AddDays(1).AddSeconds(-1); // include the entire day
+                request.CreatedAtEnd = dEnd.Date.AddDays(1).AddSeconds(-1); /* include the entire day */
             }
 
             if (query.TryGetValue("active", out var act))

@@ -133,6 +133,32 @@ namespace MageBackend.Tests
             provider.Dispose();
         }
 
+        [Fact]
+        public void GivenRabbitProvider_WhenMessageDeserializesToNull_ThenCallbackIsNotInvoked()
+        {
+            var provider = new RabbitMQProvider();
+            provider.Connect();
+
+            var callbackTriggered = false;
+            provider.Subscribe<TestMessage>("test_null_msg_queue", msg =>
+            {
+                callbackTriggered = true;
+            });
+
+            // Send the JSON literal "null" which deserializes to null for a reference type
+            var channelField = typeof(RabbitMQProvider).GetField("_channel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var channel = (RabbitMQ.Client.IModel)channelField!.GetValue(provider)!;
+            
+            var nullJsonBody = System.Text.Encoding.UTF8.GetBytes("null");
+            channel.BasicPublish(exchange: "", routingKey: "test_null_msg_queue", basicProperties: null, body: nullJsonBody);
+
+            Thread.Sleep(500);
+            Assert.False(callbackTriggered, "Callback should not be invoked when message deserializes to null");
+
+            provider.Disconnect();
+            provider.Dispose();
+        }
+
         public class TestMessage
         {
             public string Content { get; set; } = string.Empty;

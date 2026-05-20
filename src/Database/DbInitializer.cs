@@ -10,10 +10,10 @@ namespace MageBackend.Database
     {
         public static async Task InitializeAsync(ApplicationDbContext context)
         {
-            // Apply migrations automatically
+            /* Apply migrations automatically */
             await context.Database.EnsureCreatedAsync();
 
-            // 1. Seed Features
+            /* 1. Seed Features */
             if (!await context.Feature.AnyAsync())
             {
                 var features = new[]
@@ -29,7 +29,7 @@ namespace MageBackend.Database
                 await context.SaveChangesAsync();
             }
 
-            // 2. Seed Roles & RoleFeatures
+            /* 2. Seed Roles & RoleFeatures */
             if (!await context.Role.AnyAsync())
             {
                 var admin = new Role { Id = "administrator", Name = "Administrador", Description = "Acesso total ao sistema" };
@@ -39,11 +39,11 @@ namespace MageBackend.Database
                 await context.Role.AddRangeAsync(admin, manager, operatorRole);
                 await context.SaveChangesAsync();
 
-                // Seed RoleFeatures for Admin
+                /* Seed RoleFeatures for Admin */
                 var adminFeatures = new[] { "dashboard", "user", "role", "product", "feature" }
                     .Select(f => new RoleFeature { IdRole = "administrator", IdFeature = f, Create = true, View = true, Activate = true, Delete = true });
 
-                // Seed RoleFeatures for Manager
+                /* Seed RoleFeatures for Manager */
                 var managerFeatures = new[]
                 {
                     new RoleFeature { IdRole = "manager", IdFeature = "dashboard", Create = true, View = true, Activate = true, Delete = true },
@@ -52,7 +52,7 @@ namespace MageBackend.Database
                     new RoleFeature { IdRole = "manager", IdFeature = "product", Create = true, View = true, Activate = true, Delete = true }
                 };
 
-                // Seed RoleFeatures for Operator
+                /* Seed RoleFeatures for Operator */
                 var operatorFeatures = new[]
                 {
                     new RoleFeature { IdRole = "operator", IdFeature = "dashboard", Create = true, View = true, Activate = true, Delete = true },
@@ -67,7 +67,7 @@ namespace MageBackend.Database
                 await context.SaveChangesAsync();
             }
 
-            // 3. Seed First User (Admin)
+            /* 3. Seed First User (Admin) */
             var adminEmail = Environment.GetEnvironmentVariable("FIRST_USER") ?? "admin@email.com";
             var adminPassword = Environment.GetEnvironmentVariable("FIRST_PASSWORD") ?? "admin@123";
 
@@ -75,7 +75,7 @@ namespace MageBackend.Database
             if (existingUser == null)
             {
                 var hashedPassword = BCrypt.Net.BCrypt.HashPassword(adminPassword, 12);
-                
+
                 var auth = new Auth
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -97,7 +97,7 @@ namespace MageBackend.Database
                 await context.Auth.AddAsync(auth);
                 await context.User.AddAsync(user);
                 await context.SaveChangesAsync();
-                
+
                 Log.Information("[DbInitializer] Seeded initial admin account: {Email}", adminEmail);
             }
         }

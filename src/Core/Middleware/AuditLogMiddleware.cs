@@ -47,7 +47,7 @@ namespace MageBackend.Core.Middleware
                 return;
             }
 
-            // Enable buffering so the request body can be read multiple times
+            /* Enable buffering so the request body can be read multiple times */
             context.Request.EnableBuffering();
 
             string? requestBody = null;
@@ -62,7 +62,7 @@ namespace MageBackend.Core.Middleware
 
             var sanitizedParams = SanitizeBody(requestBody);
 
-            // Capture the response stream to audit response diff
+            /* Capture the response stream to audit response diff */
             var originalResponseBodyStream = context.Response.Body;
             using (var responseBodyMemoryStream = new MemoryStream())
             {
@@ -80,7 +80,7 @@ namespace MageBackend.Core.Middleware
                 responseBodyMemoryStream.Seek(0, SeekOrigin.Begin);
                 await responseBodyMemoryStream.CopyToAsync(originalResponseBodyStream);
 
-                // Capture required HTTP contexts before thread dispatch to avoid ObjectDisposedException
+                /* Capture required HTTP contexts before thread dispatch to avoid ObjectDisposedException */
                 var scopeFactory = context.RequestServices.GetRequiredService<IServiceScopeFactory>();
                 var userId = context.User?.FindFirst("id")?.Value;
                 var userName = context.User?.FindFirst("email")?.Value ?? "Anonymous";
@@ -89,7 +89,7 @@ namespace MageBackend.Core.Middleware
                 var remoteIp = context.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
                 var requestHost = context.Request.Host.Host;
 
-                // Perform async write to db in the background
+                /* Perform async write to db in the background */
                 _ = Task.Run(async () =>
                 {
                     try
@@ -98,7 +98,7 @@ namespace MageBackend.Core.Middleware
                         {
                             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                            // Determine table name from URL path segments
+                            /* Determine table name from URL path segments */
                             var tableName = "System";
                             var segments = path.Split('/');
                             foreach (var seg in segments)

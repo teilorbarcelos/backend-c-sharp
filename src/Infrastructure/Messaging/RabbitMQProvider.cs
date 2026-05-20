@@ -101,36 +101,38 @@ namespace MageBackend.Infrastructure.Messaging
             );
 
             var consumer = new EventingBasicConsumer(_channel);
-            consumer.Received += (model, ea) =>
-            {
-                var body = ea.Body.ToArray();
-                if (body == null || body.Length == 0)
-                {
-                    return;
-                }
-
-                try
-                {
-                    var json = Encoding.UTF8.GetString(body);
-                    var message = JsonSerializer.Deserialize<T>(json);
-
-                    if (message != null)
-                    {
-                        callback(message);
-                        _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "[RabbitMQ] Error handling message: {Message}", ex.Message);
-                }
-            };
+            consumer.Received += (model, ea) => HandleMessageReceived(ea, callback);
 
             _channel.BasicConsume(
                 queue: queue,
                 autoAck: false,
                 consumer: consumer
             );
+        }
+
+        private void HandleMessageReceived<T>(RabbitMQ.Client.Events.BasicDeliverEventArgs ea, Action<T> callback)
+        {
+            var body = ea.Body.ToArray();
+            if (body == null || body.Length == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var json = Encoding.UTF8.GetString(body);
+                var message = JsonSerializer.Deserialize<T>(json);
+
+                if (message != null)
+                {
+                    callback(message);
+                    _channel?.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[RabbitMQ] Error handling message: {Message}", ex.Message);
+            }
         }
 
         public void Disconnect()

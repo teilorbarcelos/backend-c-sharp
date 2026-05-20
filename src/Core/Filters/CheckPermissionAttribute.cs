@@ -12,7 +12,7 @@ namespace MageBackend.Core.Filters
     public class CheckPermissionAttribute : Attribute, IAuthorizationFilter
     {
         private readonly string _feature;
-        private readonly string _action; // "view", "create", "delete", "activate"
+        private readonly string _action; /* "view", "create", "delete", "activate" */
 
         public CheckPermissionAttribute(string feature, string action)
         {

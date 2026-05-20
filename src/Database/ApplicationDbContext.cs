@@ -22,7 +22,7 @@ namespace MageBackend.Database
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure table names and schemas
+            /* Configure table names and schemas */
             modelBuilder.Entity<User>().ToTable("User");
             modelBuilder.Entity<Auth>().ToTable("Auth");
             modelBuilder.Entity<Role>().ToTable("Role");
@@ -30,20 +30,20 @@ namespace MageBackend.Database
             modelBuilder.Entity<RoleFeature>().ToTable("RoleFeature");
             modelBuilder.Entity<Product>().ToTable("Product");
 
-            // Audit tables map to "audit" schema
+            /* Audit tables map to "audit" schema */
             modelBuilder.Entity<Audit>().ToTable("tb_audit", "audit");
             modelBuilder.Entity<ErrorLog>().ToTable("tb_error_log", "audit");
 
-            // Configure composite key for RoleFeature
+            /* Configure composite key for RoleFeature */
             modelBuilder.Entity<RoleFeature>()
                 .HasKey(rf => new { rf.IdRole, rf.IdFeature });
 
-            // Configure decimal precision
+            /* Configure decimal precision */
             modelBuilder.Entity<Product>()
                 .Property(p => p.Price)
                 .HasColumnType("decimal(18,2)");
 
-            // Apply snake_case naming convention to all column names
+            /* Apply snake_case naming convention to all column names */
             foreach (var entity in modelBuilder.Model.GetEntityTypes())
             {
                 foreach (var property in entity.GetProperties())

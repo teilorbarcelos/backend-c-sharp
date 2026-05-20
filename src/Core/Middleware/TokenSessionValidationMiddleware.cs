@@ -20,11 +20,11 @@ namespace MageBackend.Core.Middleware
         {
             if (string.IsNullOrEmpty(path)) return false;
             var p = path.ToLower();
-            return p == "/health" || 
-                   p == "/metrics" || 
-                   p == "/v1/auth/login" || 
-                   p == "/v1/auth/refresh" || 
-                   p.StartsWith("/v1/auth/password/") || 
+            return p == "/health" ||
+                   p == "/metrics" ||
+                   p == "/v1/auth/login" ||
+                   p == "/v1/auth/refresh" ||
+                   p.StartsWith("/v1/auth/password/") ||
                    p.StartsWith("/v1/debug/pdf");
         }
 

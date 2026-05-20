@@ -198,7 +198,7 @@ namespace MageBackend.Features.User
 
             var adminEmail = Environment.GetEnvironmentVariable("FIRST_USER") ?? "admin@email.com";
 
-            // Root admin protection
+            /* Root admin protection */
             if (user.Email == adminEmail)
             {
                 if (!string.IsNullOrEmpty(dto.Password))
@@ -268,7 +268,7 @@ namespace MageBackend.Features.User
                 return BadRequest(new { message = "O usuário administrador inicial não pode ser excluído." });
             }
 
-            // LGPD Anonymization
+            /* LGPD Anonymization */
             user.Name = "Deleted User";
             user.Email = $"deleted-{id}@anonymized.local";
             user.Phone = null;

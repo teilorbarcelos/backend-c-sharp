@@ -170,7 +170,7 @@ namespace MageBackend.Features.Auth
                     return StatusCode(401, new { error = "UnauthorizedError", message = "User not found or account is disabled/removed" });
                 }
 
-                // Delete the old refresh token session
+                /* Delete the old refresh token session */
                 await redisDb.KeyDeleteAsync(refreshKey);
 
                 return await GenerateAuthResponse(user);
@@ -206,7 +206,7 @@ namespace MageBackend.Features.Auth
             var response = new AuthResponseDto
             {
                 Token = Request.Headers["Authorization"].ToString().Replace("Bearer ", ""),
-                RefreshToken = "", // No refresh token returned on getMe
+                RefreshToken = "", /* No refresh token returned on getMe */
                 User = new AuthUserDto
                 {
                     Id = user.Id,
@@ -388,8 +388,8 @@ namespace MageBackend.Features.Auth
 
             var redisDb = RedisProvider.Database;
 
-            // session:user:{id}:access:{tokenHash} -> payload (24h)
-            // session:user:{id}:refresh:{refreshTokenHash} -> "1" (7d)
+            /* session:user:{id}:access:{tokenHash} -> payload (24h) */
+            /* session:user:{id}:refresh:{refreshTokenHash} -> "1" (7d) */
             await redisDb.StringSetAsync($"session:user:{user.Id}:access:{tokenHash}", JsonSerializer.Serialize(payload), TimeSpan.FromDays(1));
             await redisDb.StringSetAsync($"session:user:{user.Id}:refresh:{refreshTokenHash}", "1", TimeSpan.FromDays(7));
 

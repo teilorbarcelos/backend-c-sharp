@@ -19,11 +19,11 @@ namespace MageBackend.Database
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
         public string? Avatar { get; set; }
-        
+
         public string? IdAuth { get; set; }
         [ForeignKey("IdAuth")]
         public virtual Auth? Auth { get; set; }
-        
+
         public string IdRole { get; set; } = string.Empty;
         [ForeignKey("IdRole")]
         public virtual Role? Role { get; set; }
@@ -61,7 +61,7 @@ namespace MageBackend.Database
     public class Feature
     {
         [Key]
-        public string Id { get; set; } = string.Empty; // e.g. "product", "user", "role", "feature"
+        public string Id { get; set; } = string.Empty; /* e.g. "product", "user", "role", "feature" */
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public bool Active { get; set; } = true;

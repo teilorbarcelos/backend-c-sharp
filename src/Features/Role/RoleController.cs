@@ -231,11 +231,11 @@ namespace MageBackend.Features.Role
 
             if (dto.Permissions != null)
             {
-                // Remove existing permissions
+                /* Remove existing permissions */
                 var existingFeatures = await _context.RoleFeature.Where(rf => rf.IdRole == id).ToListAsync();
                 _context.RoleFeature.RemoveRange(existingFeatures);
 
-                // Add new permissions
+                /* Add new permissions */
                 var roleFeatures = dto.Permissions.Select(p => new RoleFeature
                 {
                     IdRole = id,
@@ -251,7 +251,7 @@ namespace MageBackend.Features.Role
             }
             else
             {
-                // Retain existing permissions
+                /* Retain existing permissions */
                 var existingFeatures = await _context.RoleFeature
                     .Where(rf => rf.IdRole == id)
                     .Select(rf => new RoleFeatureDto

@@ -37,7 +37,7 @@ namespace MageBackend.Core.Middleware
 
             if (now - windowStart > Window)
             {
-                // Reset window
+                /* Reset window */
                 count = 1;
                 windowStart = now;
                 _cache[ip] = (count, windowStart);

@@ -67,7 +67,7 @@ namespace MageBackend.Core.Middleware
                     );
             }
 
-            // Log non-controlled errors or ANY error if authenticated user is present
+            /* Log non-controlled errors or ANY error if authenticated user is present */
             var isControlledError = exception is AppException || exception is ValidationException;
             var userId = context.User?.FindFirst("id")?.Value;
 
@@ -75,7 +75,7 @@ namespace MageBackend.Core.Middleware
             {
                 try
                 {
-                    // Create db context scoped to this error logging operation
+                    /* Create db context scoped to this error logging operation */
                     var dbContext = context.RequestServices.GetRequiredService<ApplicationDbContext>();
                     var errorLog = new ErrorLog
                     {

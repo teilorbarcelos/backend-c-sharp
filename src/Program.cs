@@ -14,7 +14,7 @@ using Serilog.Events;
 
 DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { "../.env", ".env" }, ignoreExceptions: true));
 
-// ── Serilog Bootstrap ────────────────────────────────────────────────
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -31,33 +31,25 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Replace default .NET logging with Serilog
     builder.Host.UseSerilog();
 
-    // Load port from env
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8888";
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-    // Database Connection
     var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "Server=localhost,1433;Database=backend_c_sharp;User Id=sa;Password=YourPassword123;TrustServerCertificate=True;";
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlServer(dbUrl));
 
-    // Redis initialization
     var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") ?? Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost:6379";
     RedisProvider.Initialize(redisUrl);
 
-    // JWT Provider
     var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super-secret-key-that-is-very-long-and-secure-123456";
     builder.Services.AddSingleton(new JwtProvider(jwtSecret));
 
-    // RabbitMQ Messaging
     builder.Services.AddSingleton<RabbitMQProvider>();
 
-    // FluentValidation
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
-    // Controllers with JSON formatting matching Fastify (camelCase by default)
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
         {
@@ -100,44 +92,34 @@ try
         });
     }
 
-    // Global Exception Handler must be first
     app.UseMiddleware<ErrorHandlerMiddleware>();
 
     app.UseCors("AllowAll");
 
-    // Structured HTTP Request Logging (after CORS, before business logic)
     app.UseMiddleware<RequestLoggingMiddleware>();
 
-    // Rate limiting
     app.UseMiddleware<RateLimitMiddleware>();
 
-    // JWT Authentication
     app.UseMiddleware<JwtAuthenticationMiddleware>();
 
-    // Session Validation (against Redis)
     app.UseMiddleware<TokenSessionValidationMiddleware>();
 
-    // Request Audit Logging
     app.UseMiddleware<AuditLogMiddleware>();
 
-    // HTTP request metrics tracking for Prometheus
     app.UseHttpMetrics();
 
     app.UseRouting();
     app.MapControllers();
 
-    // Observability endpoints
     app.MapGet("/health", () => Results.Ok(new { status = "UP", timestamp = DateTime.UtcNow.ToString("o") }));
-    app.MapMetrics(); // Exposes /metrics
+    app.MapMetrics();
 
-    // Initialize and Seed Database
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await DbInitializer.InitializeAsync(dbContext);
     }
 
-    // Connect to RabbitMQ if enabled
     var rabbitProvider = app.Services.GetRequiredService<RabbitMQProvider>();
     rabbitProvider.Connect();
 

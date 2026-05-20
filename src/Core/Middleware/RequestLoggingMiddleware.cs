@@ -21,7 +21,7 @@ namespace MageBackend.Core.Middleware
         {
             var path = context.Request.Path.Value ?? "/";
 
-            // Skip logging for high-frequency observability endpoints
+            /* Skip logging for high-frequency observability endpoints */
             if (_silentPaths.Contains(path))
             {
                 await _next(context);
