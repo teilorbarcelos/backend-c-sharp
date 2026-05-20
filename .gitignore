@@ -28,3 +28,9 @@ Thumbs.db
 # Crash logs and diagnostics
 *.log
 *.crash
+
+# Test Coverage and Scripts
+coverage.json
+coverage.cobertura.xml
+coveragereport/
+scratch/

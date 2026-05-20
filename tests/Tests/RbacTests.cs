@@ -292,5 +292,71 @@ namespace MageBackend.Tests
             ClearAuthHeader();
         }
 
+        [Fact]
+        public async Task GivenAdminRole_WhenUpdatingRole_ThenUpdatesSuccessfully()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+
+            var rolePayload = new
+            {
+                name = $"Update Role {uniqueSuffix}",
+                description = "To be updated",
+                permissions = new List<object>()
+            };
+            var roleResp = await _client.PostAsJsonAsync("/v1/role", rolePayload);
+            var roleId = (await roleResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+
+            var updatePayload = new
+            {
+                name = $"Updated Role {uniqueSuffix}",
+                description = "Updated Description",
+                permissions = new[]
+                {
+                    new
+                    {
+                        id_feature = "product",
+                        create = true,
+                        view = true,
+                        delete = true,
+                        activate = true
+                    }
+                }
+            };
+            var updateResp = await _client.PutAsJsonAsync($"/v1/role/{roleId}", updatePayload);
+            Assert.Equal(HttpStatusCode.OK, updateResp.StatusCode);
+
+            var updateFailResp = await _client.PutAsJsonAsync("/v1/role/non-existent-role", updatePayload);
+            Assert.Equal(HttpStatusCode.NotFound, updateFailResp.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenAdminRole_WhenDeletingRole_ThenSoftDeletesSuccessfully()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+
+            var rolePayload = new
+            {
+                name = $"Delete Role {uniqueSuffix}",
+                description = "To be deleted",
+                permissions = new List<object>()
+            };
+            var roleResp = await _client.PostAsJsonAsync("/v1/role", rolePayload);
+            var roleId = (await roleResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+
+            var delResp = await _client.DeleteAsync($"/v1/role/{roleId}");
+            Assert.Equal(HttpStatusCode.NoContent, delResp.StatusCode);
+
+            var delFailResp = await _client.DeleteAsync("/v1/role/non-existent-role");
+            Assert.Equal(HttpStatusCode.NotFound, delFailResp.StatusCode);
+
+            ClearAuthHeader();
+        }
+
     }
 }

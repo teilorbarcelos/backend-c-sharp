@@ -417,6 +417,51 @@ namespace MageBackend.Tests
         }
 
         // ==========================================
+        // --- 10. CRUD operations (missing ops) ---
+        // ==========================================
+
+        [Fact]
+        public async Task GivenAdminUser_WhenFetchingUserById_ThenReturnsUser()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var resp = await _client.GetAsync($"/v1/user/{loginData.User.Id}");
+            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+
+            var notFoundResp = await _client.GetAsync("/v1/user/non-existent-user");
+            Assert.Equal(HttpStatusCode.NotFound, notFoundResp.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenAdminUser_WhenDeletingUser_ThenSoftDeletesUser()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
+            var createUserResp = await _client.PostAsJsonAsync("/v1/user", new
+            {
+                name = "Delete User Test",
+                email = $"delete_user_{uniqueSuffix}@email.com",
+                password = "Password123!",
+                id_role = "administrator"
+            });
+            var userData = await createUserResp.Content.ReadFromJsonAsync<JsonElement>();
+            var userId = userData.GetProperty("id").GetString()!;
+
+            var delResp = await _client.DeleteAsync($"/v1/user/{userId}");
+            Assert.Equal(HttpStatusCode.NoContent, delResp.StatusCode);
+
+            var notFoundResp = await _client.DeleteAsync("/v1/user/non-existent-user");
+            Assert.Equal(HttpStatusCode.NotFound, notFoundResp.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        // ==========================================
         // --- 11. Session Invalidation (4 tests) ---
         // ==========================================
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.MsSql;
 using Testcontainers.Redis;
+using Testcontainers.RabbitMq;
 using Xunit;
 
 namespace MageBackend.Tests
@@ -19,10 +20,15 @@ namespace MageBackend.Tests
             .WithImage("redis:7-alpine")
             .Build();
 
+        private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
+            .WithImage("rabbitmq:3-management-alpine")
+            .Build();
+
         public async Task InitializeAsync()
         {
             await _msSqlContainer.StartAsync();
             await _redisContainer.StartAsync();
+            await _rabbitMqContainer.StartAsync();
 
             var connectionString = _msSqlContainer.GetConnectionString();
             
@@ -30,7 +36,8 @@ namespace MageBackend.Tests
             Environment.SetEnvironmentVariable("DATABASE_URL", connectionString);
             Environment.SetEnvironmentVariable("DATABASE_URL_AUDIT", connectionString);
             Environment.SetEnvironmentVariable("REDIS_URL", _redisContainer.GetConnectionString());
-            Environment.SetEnvironmentVariable("MESSAGING_ENABLED", "false");
+            Environment.SetEnvironmentVariable("MESSAGING_ENABLED", "true");
+            Environment.SetEnvironmentVariable("RABBIT_URL", _rabbitMqContainer.GetConnectionString());
             Environment.SetEnvironmentVariable("DISABLE_RATE_LIMIT", "true");
         }
 
@@ -38,6 +45,7 @@ namespace MageBackend.Tests
         {
             await _msSqlContainer.DisposeAsync();
             await _redisContainer.DisposeAsync();
+            await _rabbitMqContainer.DisposeAsync();
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

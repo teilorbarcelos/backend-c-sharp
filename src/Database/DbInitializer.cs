@@ -21,7 +21,8 @@ namespace MageBackend.Database
                     new Feature { Id = "dashboard", Name = "Dashboard", Description = "Visualizar indicadores e métricas do sistema" },
                     new Feature { Id = "user", Name = "Usuários", Description = "Gerenciar usuários e acessos" },
                     new Feature { Id = "role", Name = "Perfis de Acesso", Description = "Gerenciar cargos e permissões" },
-                    new Feature { Id = "product", Name = "Produtos", Description = "Gerenciar catálogo de produtos" }
+                    new Feature { Id = "product", Name = "Produtos", Description = "Gerenciar catálogo de produtos" },
+                    new Feature { Id = "feature", Name = "Funcionalidades", Description = "Gerenciar as funcionalidades do sistema" }
                 };
 
                 await context.Feature.AddRangeAsync(features);
@@ -39,7 +40,7 @@ namespace MageBackend.Database
                 await context.SaveChangesAsync();
 
                 // Seed RoleFeatures for Admin
-                var adminFeatures = new[] { "dashboard", "user", "role", "product" }
+                var adminFeatures = new[] { "dashboard", "user", "role", "product", "feature" }
                     .Select(f => new RoleFeature { IdRole = "administrator", IdFeature = f, Create = true, View = true, Activate = true, Delete = true });
 
                 // Seed RoleFeatures for Manager

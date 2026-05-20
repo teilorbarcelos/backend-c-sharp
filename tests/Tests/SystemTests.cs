@@ -97,6 +97,29 @@ namespace MageBackend.Tests
             Assert.Equal("application/pdf", resp.Content.Headers.ContentType?.MediaType);
         }
 
-        
+        [Fact]
+        public async Task GivenPdfDebugEndpointPost_WhenAccessed_ThenReturnsValidPdf()
+        {
+            var resp = await _client.PostAsJsonAsync("/v1/debug/pdf", new { template = "test", data = new { } });
+            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+            Assert.Equal("application/pdf", resp.Content.Headers.ContentType?.MediaType);
+        }
+
+        [Fact]
+        public async Task GivenDebugErrorEndpoint_WhenAccessed_ThenThrowsException()
+        {
+            var resp = await _client.GetAsync("/v1/debug/error");
+            
+            // Print the content if not 500
+            if (resp.StatusCode != HttpStatusCode.InternalServerError)
+            {
+                var debugContent = await resp.Content.ReadAsStringAsync();
+                throw new Exception($"Expected 500 but got {resp.StatusCode}. Content: {debugContent}");
+            }
+            
+            Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
+            var content = await resp.Content.ReadAsStringAsync();
+            Assert.Contains("Internal Server Error", content);
+        }
     }
 }

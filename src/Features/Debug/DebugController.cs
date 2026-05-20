@@ -38,5 +38,11 @@ namespace MageBackend.Features.Debug
             Response.Headers["Content-Disposition"] = "attachment; filename=\"test.pdf\"";
             return File(DummyPdfBytes, "application/pdf");
         }
+
+        [HttpGet("error")]
+        public IActionResult ThrowError()
+        {
+            throw new System.Exception("Test error for debug");
+        }
     }
 }
