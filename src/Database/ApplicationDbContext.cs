@@ -38,6 +38,11 @@ namespace MageBackend.Database
             modelBuilder.Entity<RoleFeature>()
                 .HasKey(rf => new { rf.IdRole, rf.IdFeature });
 
+            // Configure decimal precision
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Price)
+                .HasColumnType("decimal(18,2)");
+
             // Apply snake_case naming convention to all column names
             foreach (var entity in modelBuilder.Model.GetEntityTypes())
             {

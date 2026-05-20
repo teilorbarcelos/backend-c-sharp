@@ -13,6 +13,7 @@ using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
 using MageBackend.Infrastructure.Auth;
 using FluentValidation;
+using Serilog;
 
 namespace MageBackend.Features.Auth
 {
@@ -250,7 +251,7 @@ namespace MageBackend.Features.Auth
                 user.Auth.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
-                Console.WriteLine($"[PasswordReset] Reset code for {dto.Email}: {resetToken}");
+                Log.Information("[PasswordReset] Reset code for {Email}: {ResetToken}", dto.Email, resetToken);
             }
 
             return Ok(new { message = "E-mail de recuperação enviado com sucesso!" });

@@ -2,6 +2,7 @@ using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace MageBackend.Infrastructure.Auth
 {
@@ -42,7 +43,7 @@ namespace MageBackend.Infrastructure.Auth
         public static async Task InvalidateUserSessionsAsync(string userId)
         {
             var pattern = $"session:user:{userId}:*";
-            Console.WriteLine($"[SessionManager] Invalidating sessions for user {userId} with pattern {pattern}");
+            Log.Information("[SessionManager] Invalidating sessions for user {UserId} with pattern {Pattern}", userId, pattern);
 
             var endpoints = RedisProvider.Connection.GetEndPoints();
             var database = RedisProvider.Database;
@@ -60,14 +61,14 @@ namespace MageBackend.Infrastructure.Auth
                 if (keys.Count > 0)
                 {
                     await database.KeyDeleteAsync(keys.ToArray());
-                    Console.WriteLine($"[SessionManager] Deleted {keys.Count} session keys for user {userId}");
+                    Log.Information("[SessionManager] Deleted {Count} session keys for user {UserId}", keys.Count, userId);
                 }
             }
         }
 
         public static async Task InvalidateManyUsersSessionsAsync(IEnumerable<string> userIds)
         {
-            Console.WriteLine("[SessionManager] Invalidating sessions for multiple users");
+            Log.Information("[SessionManager] Invalidating sessions for multiple users");
             foreach (var userId in userIds)
             {
                 await InvalidateUserSessionsAsync(userId);

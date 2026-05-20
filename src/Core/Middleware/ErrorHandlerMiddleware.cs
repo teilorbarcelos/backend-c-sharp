@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using MageBackend.Database;
 using FluentValidation;
 using System.Linq;
+using Serilog;
 
 namespace MageBackend.Core.Middleware
 {
@@ -95,7 +96,7 @@ namespace MageBackend.Core.Middleware
                 }
                 catch (Exception dbEx)
                 {
-                    Console.WriteLine($"[ErrorHandlerMiddleware] Failed to write error log to DB: {dbEx}");
+                    Log.Error(dbEx, "[ErrorHandler] Failed to write error log to DB");
                 }
             }
 

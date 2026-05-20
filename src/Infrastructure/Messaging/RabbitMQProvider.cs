@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Serilog;
 
 namespace MageBackend.Infrastructure.Messaging
 {
@@ -36,11 +37,11 @@ namespace MageBackend.Infrastructure.Messaging
 
                 _connection = factory.CreateConnection();
                 _channel = _connection.CreateModel();
-                Console.WriteLine("[RabbitMQ] Connected successfully");
+                Log.Information("[RabbitMQ] Connected successfully");
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[RabbitMQ] Connection failed: {ex.Message}");
+                Log.Error(ex, "[RabbitMQ] Connection failed: {Message}", ex.Message);
                 throw;
             }
         }
@@ -119,7 +120,7 @@ namespace MageBackend.Infrastructure.Messaging
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[RabbitMQ] Error handling message: {ex.Message}");
+                    Log.Error(ex, "[RabbitMQ] Error handling message: {Message}", ex.Message);
                 }
             };
 
@@ -139,7 +140,7 @@ namespace MageBackend.Infrastructure.Messaging
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[RabbitMQ] Error disconnecting: {ex.Message}");
+                Log.Warning(ex, "[RabbitMQ] Error disconnecting: {Message}", ex.Message);
             }
         }
 

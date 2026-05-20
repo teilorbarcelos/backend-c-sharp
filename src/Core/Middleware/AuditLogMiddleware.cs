@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.IO;
 using System.Linq;
+using Serilog;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -135,7 +136,7 @@ namespace MageBackend.Core.Middleware
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[Audit System] Failed to write audit log to DB: {ex}");
+                        Log.Error(ex, "[Audit] Failed to write audit log to DB");
                     }
                 });
             }

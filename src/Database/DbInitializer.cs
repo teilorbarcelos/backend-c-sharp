@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace MageBackend.Database
 {
@@ -96,7 +97,7 @@ namespace MageBackend.Database
                 await context.User.AddAsync(user);
                 await context.SaveChangesAsync();
                 
-                Console.WriteLine($"[DbInitializer] Seeded initial admin account: {adminEmail}");
+                Log.Information("[DbInitializer] Seeded initial admin account: {Email}", adminEmail);
             }
         }
     }
