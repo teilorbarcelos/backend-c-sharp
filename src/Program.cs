@@ -9,6 +9,7 @@ using MageBackend.Core.Middleware;
 using Prometheus;
 using FluentValidation;
 using MageBackend.Infrastructure.Messaging;
+using MageBackend.Infrastructure.Storage;
 using Serilog;
 using Serilog.Events;
 
@@ -47,6 +48,7 @@ try
     builder.Services.AddSingleton(new JwtProvider(jwtSecret));
 
     builder.Services.AddSingleton<RabbitMQProvider>();
+    builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
 
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 

@@ -29,6 +29,7 @@ namespace MageBackend.Tests
             provider.Publish("test_queue", new TestMessage { Content = "Hello Rabbit!" });
 
             var hit = resetEvent.Wait(TimeSpan.FromSeconds(5));
+            Thread.Sleep(50); // Ensure BasicAck is covered in RabbitMQProvider
             
             Assert.True(hit, "Did not receive message within 5 seconds");
             Assert.Equal("Hello Rabbit!", receivedMessage);
@@ -103,6 +104,7 @@ namespace MageBackend.Tests
             provider.Publish("test_error_queue", new TestMessage { Content = "Trigger exception" });
 
             var hit = resetEvent.Wait(TimeSpan.FromSeconds(5));
+            Thread.Sleep(50);
             Assert.True(hit, "Did not trigger callback");
 
             provider.Disconnect();

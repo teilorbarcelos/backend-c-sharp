@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.MsSql;
 using Testcontainers.Redis;
 using Testcontainers.RabbitMq;
+using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
 using Xunit;
 
 namespace MageBackend.Tests
@@ -50,7 +52,15 @@ namespace MageBackend.Tests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            // WebHost configuration overrides if needed
+            builder.ConfigureServices(services =>
+            {
+                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(MageBackend.Infrastructure.Storage.IStorageProvider));
+                if (descriptor != null)
+                {
+                    services.Remove(descriptor);
+                }
+                services.AddSingleton<MageBackend.Infrastructure.Storage.IStorageProvider, MageBackend.Infrastructure.Storage.LocalStorageProvider>();
+            });
         }
     }
 }

@@ -22,6 +22,7 @@ namespace MageBackend.Database
                     new Feature { Id = "user", Name = "Usuários", Description = "Gerenciar usuários e acessos" },
                     new Feature { Id = "role", Name = "Perfis de Acesso", Description = "Gerenciar cargos e permissões" },
                     new Feature { Id = "product", Name = "Produtos", Description = "Gerenciar catálogo de produtos" },
+                    new Feature { Id = "storage", Name = "Arquivos", Description = "Gerenciar upload de arquivos e mídias" },
                 };
 
                 await context.Feature.AddRangeAsync(features);

@@ -54,6 +54,9 @@ lint:
 generate:
 	@python3 scripts/generate_crud.py $(name)
 
+generate-storage:
+	@python3 scripts/generate_storage.py
+
 migration:
 	@if [ -z "$(name)" ]; then \
 		read -p "Enter migration name: " MIGN; \

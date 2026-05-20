@@ -43,6 +43,10 @@
     {
       "name": "🗄️ Database: Update Schema",
       "command": "make db-update"
+    },
+    {
+      "name": "📦 Generate Storage Provider",
+      "command": "make generate-storage"
     }
   ]
 }

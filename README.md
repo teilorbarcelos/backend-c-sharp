@@ -179,9 +179,9 @@ make test           # Executa os 49 cenários de integração
 Para atingir a paridade total de funcionalidades e DX (Developer Experience) com o projeto em Node.js, os seguintes itens devem ser implementados no boilerplate C# utilizando boas práticas .NET:
 
 ### 1. 📦 Storage Providers (Multi-Provider)
-- [ ] **Criar Abstração `IStorageProvider`:** Definir o contrato para upload, download e exclusão de arquivos.
-- [ ] **Implementar Local Storage Driver:** Driver para persistir arquivos localmente em disco.
-- [ ] **Drivers de Nuvem (AWS S3, Google Cloud Storage, Azure Blob):** Desenvolver drivers integrados e prontos para uso em produção.
+- [x] **Criar Abstração `IStorageProvider`:** Definir o contrato para upload, download e exclusão de arquivos.
+- [x] **Implementar Local Storage Driver:** Driver para persistir arquivos localmente em disco.
+- [x] **Drivers de Nuvem (AWS S3, Google Cloud Storage, Azure Blob):** Gerador interativo para provisionar drivers e pacotes prontos para uso em produção.
 
 ### 2. 📩 Mensageria (RabbitMQ Integration)
 - [x] **Provedor de Mensageria:** Desenvolver um serviço integrado com RabbitMQ para publicação e consumo de mensagens assíncronas, ativado condicionalmente via variável de ambiente `MESSAGING_ENABLED=true` no `.env`.
@@ -196,3 +196,7 @@ Para atingir a paridade total de funcionalidades e DX (Developer Experience) com
 
 ### 5. ⚙️ Pre-commit Hooks & Linter
 - [X] **Husky.NET & Git Hooks:** Configurar githooks para formatar automaticamente o código C# (usando `dotnet format`) e rodar testes unitários locais antes de permitir cada commit.
+
+### 6. 📊 CI/CD
+- [] **Pipeline no GitHub Actions:** Criar pipeline para rodar testes, formatar código e gerar build.
+

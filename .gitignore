@@ -36,3 +36,4 @@ coveragereport/
 uncovered_lines.txt
 scratch/
 *tests/coverage.json
+src/StorageData/*
