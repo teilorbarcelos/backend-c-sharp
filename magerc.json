@@ -17,6 +17,10 @@
       "command": "make infra-down"
     },
     {
+      "name": "🐳 Infrastructure: Reset (Remove Containers & Volumes)",
+      "command": "make infra-clean"
+    },
+    {
       "name": "🗄️ Database: Run Migrations",
       "command": "make db-migrate"
     },
@@ -27,6 +31,18 @@
     {
       "name": "📊 Code Coverage Report",
       "command": "make coverage"
+    },
+    {
+      "name": "✨ Generate Feature CRUD",
+      "command": "make generate"
+    },
+    {
+      "name": "🗄️ Database: Create Migration",
+      "command": "make migration"
+    },
+    {
+      "name": "🗄️ Database: Update Schema",
+      "command": "make db-update"
     }
   ]
 }

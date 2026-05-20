@@ -129,6 +129,13 @@ try
 
     app.Run();
 }
+catch (Exception ex) when (ex.GetType().Name == "HostAbortedException")
+{
+    /*
+     * Ignorado intencionalmente: O EF Core tooling (dotnet ef) usa essa exceção
+     * para interromper o Host logo após obter as configurações do DbContext.
+     */
+}
 catch (Exception ex)
 {
     Log.Fatal(ex, "Application startup failed");

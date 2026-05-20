@@ -1,10 +1,14 @@
-.PHONY: infra-up infra-down dev db-migrate db-seed metrics-up metrics-stop metrics-down test coverage setup lint
+.PHONY: infra-up infra-down infra-clean dev db-migrate db-seed metrics-up metrics-stop metrics-down test coverage setup lint generate migration db-update
 
 infra-up:
 	docker compose -f docker-compose.infra.yml up -d
 
 infra-down:
 	docker compose -f docker-compose.infra.yml down
+
+infra-clean:
+	@echo "🧹 Removendo containers e volumes (resetando banco)..."
+	docker compose -f docker-compose.infra.yml down -v
 
 dev:
 	DOTNET_USE_POLLING_FILE_WATCHER=1 dotnet watch --project src/MageBackend.csproj run
@@ -46,3 +50,19 @@ lint:
 	@echo ""
 	@echo "🎨 Executando dotnet format..."
 	dotnet format src/MageBackend.csproj --verify-no-changes
+
+generate:
+	@python3 scripts/generate_crud.py $(name)
+
+migration:
+	@if [ -z "$(name)" ]; then \
+		read -p "Enter migration name: " MIGN; \
+		if [ -z "$$MIGN" ]; then echo "❌ Migration name cannot be empty"; exit 1; fi; \
+		dotnet ef migrations add $$MIGN -p src/MageBackend.csproj; \
+	else \
+		dotnet ef migrations add $(name) -p src/MageBackend.csproj; \
+	fi
+
+db-update:
+	dotnet ef database update -p src/MageBackend.csproj
+

@@ -88,6 +88,51 @@ make dev            # Inicia o servidor local em modo watch (Hot Reload)
 
 ---
 
+## 🏗️ Gerador Automático de CRUD (Scaffolder)
+
+O projeto conta com um poderoso script gerador (`scripts/generate_crud.py`) que cria uma Vertical Slice completa para uma entidade definida no arquivo `Entities.cs`. Ele gera automaticamente a Controller, testes de integração robustos, configura o `ApplicationDbContext` e lida com o registro de RBAC dinamicamente.
+
+### Passo a passo para gerar uma nova API:
+
+1. **Defina a Entidade:**
+   Adicione a nova classe de modelo no final do arquivo `src/Database/Entities.cs`.
+   ```csharp
+   public class PaymentTransaction
+   {
+       public string Id { get; set; } = string.Empty;
+       public decimal Amount { get; set; }
+       public DateTime CreatedAt { get; set; }
+   }
+   ```
+
+2. **Inicie o Gerador:**
+   No terminal, execute o comando make passando o nome exato da classe que você criou:
+   ```bash
+   make generate name=PaymentTransaction
+   ```
+
+3. **Configure as Permissões (RBAC):**
+   O script irá perguntar como você quer registrar a funcionalidade no painel de permissões.
+   ```bash
+   --- RBAC Configuration ---
+   Do you want to register this feature in RBAC (DbInitializer)? [Y/n]: y
+   Feature ID (default: paymenttransaction): tx
+   Feature Name (default: PaymentTransaction): Transações
+   Feature Description (default: Auto-generated CRUD for PaymentTransaction): Gerenciamento de fluxo financeiro
+   ```
+   > **Nota sobre Segurança:** Se você responder `n` na primeira pergunta, o recurso não entrará no sistema de roles padrão e será fortemente blindado via atributo `[AuthorizeAdmin]`, sendo acessível apenas para super administradores.
+
+4. **Gere a Migration do Banco de Dados:**
+   Ao final da geração, o terminal perguntará se você quer rodar o Entity Framework:
+   ```bash
+   Do you want to create and apply an EF Core migration for PaymentTransaction? (y/N): y
+   ```
+   Digite `y` para que o schema do banco seja atualizado na hora. (Aviso: logs do *HostAbortedException* podem aparecer durante essa etapa; é um comportamento inofensivo do EF Core tooling).
+
+**Pronto!** Em menos de 10 segundos você tem uma API REST rodando em `/v1/paymenttransaction` contendo: paginação, filtros complexos por string, ordenação, permissões (`view`, `create`, `delete`, `activate`), swagger configurado, auditoria e uma suite com dezenas de testes de integração automatizados rodando contra o Testcontainers com 100% de cobertura de código.
+
+---
+
 ## 📖 API Documentation
 
 A documentação interativa e os endpoints de observabilidade ficam disponíveis em:
@@ -142,7 +187,7 @@ Para atingir a paridade total de funcionalidades e DX (Developer Experience) com
 - [x] **Provedor de Mensageria:** Desenvolver um serviço integrado com RabbitMQ para publicação e consumo de mensagens assíncronas, ativado condicionalmente via variável de ambiente `MESSAGING_ENABLED=true` no `.env`.
 
 ### 3. 🛠️ CLI de Geração de Código (Generator)
-- [ ] **Scaffolder de Feature Slices (CLI):** Criar uma CLI ou script (ex: .NET tool customizada ou script de terminal) capaz de criar automaticamente a pasta de Features (Controller, DTOs, Entidades) ao informar o nome do novo recurso, acelerando a criação de CRUDs seguindo o padrão de fatias verticais.
+- [x] **Scaffolder de Feature Slices (CLI):** Criar uma CLI ou script (ex: .NET tool customizada ou script de terminal) capaz de criar automaticamente a pasta de Features (Controller, DTOs, Entidades) ao informar o nome do novo recurso, acelerando a criação de CRUDs seguindo o padrão de fatias verticais.
 
 ### 4. 🧪 Testes de Integração e Testcontainers
 - [x] **Suite de Testes de Integração (49 cenários):** Todos os 49 cenários da suite de compliance Python foram replicados localmente em C# com xUnit, independentes de qualquer infra externa.
@@ -150,4 +195,4 @@ Para atingir a paridade total de funcionalidades e DX (Developer Experience) com
 - [x] **Paridade com Compliance Python:** Cobertura completa dos 13 módulos de compliance (Auth, RBAC, Schema, Filters, Audit, Soft Delete, Observability, Rate Limit, Status, Role Features, Session Invalidation, Error Logs, PDF Debug).
 
 ### 5. ⚙️ Pre-commit Hooks & Linter
-- [ ] **Husky.NET & Git Hooks:** Configurar githooks para formatar automaticamente o código C# (usando `dotnet format`) e rodar testes unitários locais antes de permitir cada commit.
+- [X] **Husky.NET & Git Hooks:** Configurar githooks para formatar automaticamente o código C# (usando `dotnet format`) e rodar testes unitários locais antes de permitir cada commit.

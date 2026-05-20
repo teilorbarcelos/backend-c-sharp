@@ -31,7 +31,7 @@ namespace MageBackend.Features.Feature
         }
 
         [HttpGet]
-        [CheckPermission("feature", "view")]
+        [AuthorizeAdmin]
         [ProducesResponseType(typeof(SearchResult<Database.Feature>), 200)]
         [ProducesResponseType(400)]
         public async Task<IActionResult> List([FromQuery] string? active)
@@ -47,7 +47,7 @@ namespace MageBackend.Features.Feature
         }
 
         [HttpGet("all")]
-        [CheckPermission("feature", "view")]
+        [AuthorizeAdmin]
         [ProducesResponseType(typeof(SearchResult<Database.Feature>), 200)]
         [ProducesResponseType(400)]
         public async Task<IActionResult> ListAll()
@@ -63,7 +63,7 @@ namespace MageBackend.Features.Feature
         }
 
         [HttpGet("{id}")]
-        [CheckPermission("feature", "view")]
+        [AuthorizeAdmin]
         [ProducesResponseType(typeof(Database.Feature), 200)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> GetById(string id)
@@ -81,7 +81,7 @@ namespace MageBackend.Features.Feature
         }
 
         [HttpPost]
-        [CheckPermission("feature", "create")]
+        [AuthorizeAdmin]
         [ProducesResponseType(typeof(Database.Feature), 201)]
         [ProducesResponseType(400)]
         public async Task<IActionResult> Create([FromBody] CreateFeatureDto dto)
@@ -118,7 +118,7 @@ namespace MageBackend.Features.Feature
         }
 
         [HttpPut("{id}")]
-        [CheckPermission("feature", "create")]
+        [AuthorizeAdmin]
         [ProducesResponseType(typeof(Database.Feature), 200)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> Update(string id, [FromBody] UpdateFeatureDto dto)
@@ -141,7 +141,7 @@ namespace MageBackend.Features.Feature
         }
 
         [HttpDelete("{id}")]
-        [CheckPermission("feature", "delete")]
+        [AuthorizeAdmin]
         [ProducesResponseType(204)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> Delete(string id)
@@ -161,7 +161,7 @@ namespace MageBackend.Features.Feature
         }
 
         [HttpPatch("{id}/status")]
-        [CheckPermission("feature", "activate")]
+        [AuthorizeAdmin]
         [ProducesResponseType(typeof(Database.Feature), 200)]
         [ProducesResponseType(404)]
         public async Task<IActionResult> ToggleStatus(string id, [FromBody] ToggleStatusDto dto)
