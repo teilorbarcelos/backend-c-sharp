@@ -19,6 +19,10 @@
     {
       "name": "🗄️ Database: Run Migrations",
       "command": "make db-migrate"
+    },
+    {
+      "name": "🧪 Run Integration Tests",
+      "command": "make test"
     }
   ]
 }

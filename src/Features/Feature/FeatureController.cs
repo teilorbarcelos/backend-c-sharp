@@ -89,7 +89,7 @@ namespace MageBackend.Features.Feature
             var validationResult = await _createValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var exists = await _context.Feature.AnyAsync(f => f.Id == dto.Id);
@@ -126,7 +126,7 @@ namespace MageBackend.Features.Feature
             var validationResult = await _updateValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var feature = await _context.Feature.FindAsync(id);

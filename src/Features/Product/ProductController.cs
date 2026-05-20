@@ -109,7 +109,7 @@ namespace MageBackend.Features.Product
             var validationResult = await _createValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var skuExists = await _context.Product.AnyAsync(p => p.Sku == dto.Sku && !p.IsDeleted);

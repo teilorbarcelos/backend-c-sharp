@@ -119,7 +119,7 @@ namespace MageBackend.Features.User
             var validationResult = await _createUserValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var emailExists = await _context.User.AnyAsync(u => u.Email == dto.Email && !u.IsDeleted);
@@ -190,7 +190,7 @@ namespace MageBackend.Features.User
             var validationResult = await _updateUserValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var user = await _context.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);

@@ -14,7 +14,8 @@ O projeto utiliza o estado da arte do ecossistema .NET:
 - **Database:** SQL Server (Principal) & Redis (Cache de Sessões e Rate Limit)
 - **Documentação:** Swagger (OpenAPI 3.0) com UI integrada em `/v1/docs`
 - **Métricas:** Prometheus-net (Coleta de telemetria nativa da API)
-- **Testes:** Suite externa de compliance (pytest em Python) que valida 49 cenários de integração de ponta a ponta
+- **Testes:** xUnit + Testcontainers.NET — **49 cenários de integração** (paridade total com a suite de compliance Python)
+
 
 ---
 
@@ -99,6 +100,35 @@ A documentação interativa e os endpoints de observabilidade ficam disponíveis
 
 ---
 
+## 🧪 Testes de Integração (49 Cenários de Compliance)
+
+O projeto possui uma suite completa de **49 testes de integração** que replicam localmente todos os cenários da suite de compliance Python (`mage-backend-compliance`). Os testes usam **Testcontainers.NET** para subir containers isolados de SQL Server e Redis automaticamente.
+
+```bash
+make test           # Executa os 49 cenários de integração
+```
+
+### Cobertura dos Cenários
+
+| Módulo | Cenários | Descrição |
+|--------|----------|-----------|
+| **01. Auth & Session** | 9 | Login, refresh token, /me, session Redis, invalidação, user/role inativos |
+| **02. RBAC** | 2 | Permissões bloqueadas (403) e permitidas por feature |
+| **03. Schema Validation** | 2 | Campos obrigatórios ausentes, rejeição de campos desconhecidos |
+| **04. Dynamic Filters** | 9 | Busca, paginação, ordenação, filtro por status, range de datas, limites |
+| **05. Audit Logs** | 3 | Registro de mutações, exclusão de requests não autenticados, scrubbing de senha |
+| **06. Soft Delete** | 2 | Anonimização LGPD de usuários, soft delete de roles |
+| **07. Observability** | 2 | Health check (/health) e Prometheus (/metrics) |
+| **08. Rate Limit** | 1 | Headers x-ratelimit-limit e x-ratelimit-remaining |
+| **09. Status Toggle** | 9 | Toggle de product/role/user com RBAC (forbidden/allowed) |
+| **10. Role Features** | 4 | Listagem de features, RBAC, schema de role por ID |
+| **11. Session Invalidation** | 4 | Invalidação ao desativar/atualizar role e user |
+| **12. Error Logs** | 1 | Registro de erros de validação no banco |
+| **13. PDF Debug** | 1 | Endpoint de geração de PDF |
+| **Total** | **49** | **Paridade total com compliance Python** |
+
+---
+
 ## 📋 Checklist de Paridade de Infraestrutura com o Node.js Backend
 
 Para atingir a paridade total de funcionalidades e DX (Developer Experience) com o projeto em Node.js, os seguintes itens devem ser implementados no boilerplate C# utilizando boas práticas .NET:
@@ -115,8 +145,9 @@ Para atingir a paridade total de funcionalidades e DX (Developer Experience) com
 - [ ] **Scaffolder de Feature Slices (CLI):** Criar uma CLI ou script (ex: .NET tool customizada ou script de terminal) capaz de criar automaticamente a pasta de Features (Controller, DTOs, Entidades) ao informar o nome do novo recurso, acelerando a criação de CRUDs seguindo o padrão de fatias verticais.
 
 ### 4. 🧪 Testes de Integração e Testcontainers
-- [ ] **Suite de Testes Unitários Nativa:** Criar um projeto de testes xUnit/NUnit com cobertura de código nativa do .NET (dotnet test).
-- [ ] **Testcontainers.NET:** Configurar testes de integração que sobem containers reais de SQL Server e Redis em tempo de execução de forma totalmente isolada.
+- [x] **Suite de Testes de Integração (49 cenários):** Todos os 49 cenários da suite de compliance Python foram replicados localmente em C# com xUnit, independentes de qualquer infra externa.
+- [x] **Testcontainers.NET:** Containers reais de SQL Server e Redis são provisionados automaticamente em cada execução de teste.
+- [x] **Paridade com Compliance Python:** Cobertura completa dos 13 módulos de compliance (Auth, RBAC, Schema, Filters, Audit, Soft Delete, Observability, Rate Limit, Status, Role Features, Session Invalidation, Error Logs, PDF Debug).
 
 ### 5. ⚙️ Pre-commit Hooks & Linter
 - [ ] **Husky.NET & Git Hooks:** Configurar githooks para formatar automaticamente o código C# (usando `dotnet format`) e rodar testes unitários locais antes de permitir cada commit.

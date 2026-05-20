@@ -172,7 +172,7 @@ namespace MageBackend.Features.Role
             var validationResult = await _roleValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var id = Slugify(dto.Name);
@@ -217,7 +217,7 @@ namespace MageBackend.Features.Role
             var validationResult = await _roleValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var role = await _context.Role.Where(r => r.Id == id && !r.IsDeleted).FirstOrDefaultAsync();

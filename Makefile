@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down dev db-migrate db-seed metrics-up metrics-stop metrics-down
+.PHONY: infra-up infra-down dev db-migrate db-seed metrics-up metrics-stop metrics-down test
 
 infra-up:
 	docker compose -f docker-compose.infra.yml up -d
@@ -23,3 +23,6 @@ metrics-stop:
 metrics-down:
 	@echo "🗑️ Removendo stack de métricas..."
 	docker compose -f docker-compose.metrics.yml down
+
+test:
+	dotnet test tests/MageBackend.Tests.csproj

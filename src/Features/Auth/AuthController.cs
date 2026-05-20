@@ -107,7 +107,7 @@ namespace MageBackend.Features.Auth
             var validationResult = await _loginValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var user = await _context.User
@@ -138,7 +138,7 @@ namespace MageBackend.Features.Auth
             var validationResult = await _refreshValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             try
@@ -232,7 +232,7 @@ namespace MageBackend.Features.Auth
             var validationResult = await _resetRequestValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var user = await _context.User
@@ -266,7 +266,7 @@ namespace MageBackend.Features.Auth
             var validationResult = await _resetValidateValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var user = await _context.User
@@ -301,7 +301,7 @@ namespace MageBackend.Features.Auth
             var validationResult = await _changePasswordValidator.ValidateAsync(dto);
             if (!validationResult.IsValid)
             {
-                return BadRequest(new { message = validationResult.Errors.First().ErrorMessage });
+                throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
             var user = await _context.User
