@@ -1,202 +1,190 @@
-# Advanced C# (ASP.NET Core) Backend API
+# Advanced C# (ASP.NET Core) Backend API Boilerplate
 
-Uma arquitetura robusta e moderna construída com **C#**, **ASP.NET Core 10.0** e **Entity Framework Core (EF Core)**, adotando o padrão de **Vertical Slice Architecture (VSA)** para garantir alta performance, baixo acoplamento entre módulos e facilidade de manutenção.
+Uma arquitetura robusta, moderna e de alta performance construída com **C#**, **ASP.NET Core 10.0** e **Entity Framework Core (EF Core)**. O projeto adota o padrão de **Vertical Slice Architecture (VSA)** para garantir fatias funcionais de baixo acoplamento, alta coesão e facilidade de manutenção.
 
 ---
 
 ## 🚀 Tecnologias Core
 
-O projeto utiliza o estado da arte do ecossistema .NET:
-
-- **Runtime & SDK:** [.NET 10.0](https://dotnet.microsoft.com/) (Performance extrema, recursos modernos de linguagem C# e compilação nativa)
-- **Framework Web:** [ASP.NET Core Web API](https://learn.microsoft.com/en-us/aspnet/core/) (Estrutura de alta performance para APIs REST)
-- **ORM:** [Entity Framework Core (EF Core)](https://learn.microsoft.com/en-us/ef/core/) (Mapeamento relacional de banco de dados idiomático)
-- **Database:** SQL Server (Principal) & Redis (Cache de Sessões e Rate Limit)
+- **Runtime & SDK:** [.NET 10.0](https://dotnet.microsoft.com/) (Extrema performance e recursos modernos do C#)
+- **Framework Web:** [ASP.NET Core Web API](https://learn.microsoft.com/en-us/aspnet/core/)
+- **ORM:** [Entity Framework Core (EF Core)](https://learn.microsoft.com/en-us/ef/core/)
+- **Banco de Dados:** SQL Server (Produção/Desenv) & Redis (Cache de Sessões e Rate Limit)
+- **Mensageria:** RabbitMQ (Comunicação Assíncrona e Filas de Mensagem)
 - **Documentação:** Swagger (OpenAPI 3.0) com UI integrada em `/v1/docs`
-- **Métricas:** Prometheus-net (Coleta de telemetria nativa da API)
-- **Testes:** xUnit + Testcontainers.NET — **49 cenários de integração** (paridade total com a suite de compliance Python)
-
-
----
-
-## ✨ Principais Funcionalidades (Implementadas)
-
-### 🔐 Segurança e Autenticação
-- **RBAC Avançado (Baseado em Permissões):** Controle de acesso granular por funcionalidade (`view`, `create`, `delete`, `activate`) via atributo personalizado `[CheckPermission]` em nível de endpoint.
-- **Gerenciamento de Sessões via Redis:** Rastreamento e armazenamento de tokens de sessão ativos com suporte a invalidação instantânea por usuário ou por cargo (Role) usando o `SessionManager`.
-- **Rate Limiting Inteligente:** Proteção contra abusos configurada de forma global e com verificação em memória de alto desempenho.
-
-### 🏗️ Arquitetura de Fatias Verticais (Vertical Slice Architecture)
-- **Feature Folders:** Todo o fluxo de uma funcionalidade (definição do Controller, DTOs de Request/Response, mapeamentos e interações com o banco de dados) fica contido de forma coesa dentro de sua respectiva pasta em `src/Features`.
-- **Record Types & FluentValidation:** DTOs de Request/Response imutáveis usando C# `record` types e validações de payload declarativas desacopladas com `FluentValidation`.
-- **Filtragem Dinâmica & Paginação:** Sistema integrado de busca e filtros complexos (incluindo ranges de data e ordenação) processados diretamente no banco de dados via métodos de extensão `IQueryable` (`QueryableExtensions.cs`).
-- **Soft Delete:** Suporte nativo a exclusão lógica (`is_deleted` e `deleted_at`) nas entidades de banco de dados.
-
-### 📝 Auditoria, Métricas e Logs
-- **Audit Logs Automáticos:** Middleware dedicado (`AuditLogMiddleware`) que intercepta e registra automaticamente no banco de dados todas as mutações com metadados do usuário, IP, payload e rota.
-- **Error Logs no DB:** Tratamento global de exceções (`ErrorHandlerMiddleware`) que captura falhas não tratadas e as registra na tabela `tb_error_log` do schema `audit`.
-- **Prometheus Metrics:** Exposição nativa de métricas de requests no endpoint `/metrics` utilizando `prometheus-net`.
-- **Audit Explorer:** Rotas administrativas integradas para consulta rápida de logs de auditoria e erros do sistema.
-
-### 📄 PDF Service Integration
-- **PDF Debug Endpoints:** Rotas prontas para geração e envio de PDFs com suporte a streaming bypass.
-
-### 📊 Real-time Observability (Prometheus & Grafana)
-- **Stack Docker de Métricas:** Configuração inclusa de containers Prometheus e Grafana para coletar métricas de performance da API em tempo real.
+- **Métricas:** Prometheus-net (Telemetria)
+- **Testes:** xUnit + Testcontainers.NET (Criação dinâmica de containers SQL Server, Redis e RabbitMQ durante o ciclo de testes)
 
 ---
 
-## ⚙️ Configuração Local
+## 🏗️ Arquitetura e Padrões de Projeto
+
+### Vertical Slice Architecture (VSA)
+Em vez de organizar o código por camadas técnicas (Controllers, Services, Repositories), o projeto organiza o código em **Feature Slices** (Fatias Verticais) localizadas na pasta `src/Features`.
+- Cada pasta representa uma funcionalidade de negócios (Ex: `Feature`, `Auth`, `Role`, `User`, `Storage`).
+- Todo o ciclo da funcionalidade (Controller, Request/Response DTOs, Validador, Lógica e Mapeamento de Entidades) fica agrupado, facilitando a alteração e diminuindo acoplamento.
+
+### Record Types & FluentValidation
+Uso de C# `record` types imutáveis para DTOs de Request e Response, garantindo segurança na transferência de dados. As validações de payload são desacopladas da lógica de negócios e declaradas usando `FluentValidation`.
+
+### Filtros Dinâmicos, Paginação e Ordenação
+Um mecanismo robusto construído sobre métodos de extensão `IQueryable` (`QueryableExtensions.cs`). Permite que os controladores recebam filtros de busca flexíveis, ranges de datas, ordenação e paginação, compilando tudo dinamicamente em instruções SQL nativas executadas no banco de dados.
+
+### Soft Delete & LGPD Compliance
+- Suporte nativo a exclusão lógica via campos `is_deleted` e `deleted_at`.
+- Funcionalidade para anonimização LGPD de informações sensíveis (como nome e email de usuários deletados).
+
+---
+
+## 🔐 Segurança e Controle de Acesso (RBAC)
+
+### Autenticação JWT e Sessões via Redis
+- Autenticação baseada em tokens JWT (com suporte a Refresh Token).
+- Rastreamento em tempo real de sessões de usuário no Redis.
+- Controle centralizado de invalidação de tokens via `SessionManager`. Desativar um usuário ou alterar suas permissões invalida instantaneamente suas sessões ativas no Redis.
+
+### RBAC Granular (Role-Based Access Control)
+- Controle de acesso fino por funcionalidade baseado em permissões (ex: `view`, `create`, `delete`, `activate`).
+- Verificação feita de forma declarativa nos métodos dos controladores usando o atributo personalizado `[CheckPermission("recurso", "acao")]`.
+
+### Rate Limiting Inteligente
+- Middleware integrado que protege a API contra abusos (DoS/Brute Force).
+- Resposta automática com headers HTTP adequados (`x-ratelimit-limit`, `x-ratelimit-remaining`).
+
+---
+
+## 📝 Auditoria e Logs do Sistema
+
+### Trilha de Auditoria Automática
+O `AuditLogMiddleware` intercepta e grava automaticamente na tabela `tb_audit_log` todas as operações de mutação do banco de dados (POST, PUT, DELETE, PATCH). Registra o IP do solicitante, rota, ID do usuário logado, timestamps e oculta dados confidenciais (como senhas).
+
+### Logs de Erro Centrais
+O `ErrorHandlerMiddleware` gerencia globalmente falhas de execução e validação da API. Exceções não tratadas são transformadas em respostas HTTP estruturadas amigáveis e salvas de forma detalhada na tabela `tb_error_log`.
+
+---
+
+## 🛠️ CLI de Geração Automática de Código (Scaffolder)
+
+O projeto dispõe de scripts geradores interativos e automatizados para acelerar o desenvolvimento, garantindo paridade com a arquitetura do projeto.
+
+### 1. Gerador de CRUD Completo
+O script `scripts/generate_crud.py` lê novas entidades definidas no arquivo `src/Database/Entities.cs` e constrói fatias verticais de código completas, incluindo testes automatizados de ponta a ponta e integração com o banco de dados.
+
+#### Passo a Passo:
+1. **Defina a Entidade:**
+   Adicione a nova classe de modelo no arquivo `src/Database/Entities.cs`:
+   ```csharp
+   public class Category
+   {
+       public string Id { get; set; } = string.Empty;
+       public string Name { get; set; } = string.Empty;
+       public bool IsDeleted { get; set; }
+   }
+   ```
+2. **Execute o Comando do Scaffolder:**
+   ```bash
+   make generate name=Category
+   ```
+3. **Configure o RBAC de forma interativa:**
+   O terminal solicitará informações de registro da feature no banco:
+   - Se deseja adicionar as permissões ao banco.
+   - Nome amigável e descrição da feature.
+   - Se deseja associar a nova feature automaticamente ao perfil Administrador.
+4. **Aplique as Migrations do EF Core:**
+   O script perguntará se você deseja criar e aplicar a migration imediatamente no banco de dados.
+   
+O resultado é um módulo completo contendo rotas REST, RBAC integrado, testes cobrindo rotas CRUD, paginação, filtros e auditoria.
+
+### 2. Gerador de Storage Providers
+O script `scripts/generate_storage.py` permite alternar dinamicamente o provedor de persistência de arquivos da API, instalando dependências NuGet e gerando a classe concreta do driver e seus respectivos testes unitários mockados.
+
+#### Passo a Passo:
+1. **Execute o Comando:**
+   ```bash
+   make generate-storage
+   ```
+2. **Selecione a opção desejada:**
+   - `[1] Local Storage` (Persistência no diretório local `StorageData`)
+   - `[2] AWS S3` (Integração com Amazon S3)
+   - `[3] Google Cloud Storage` (Integração com GCS)
+   - `[4] Azure Blob Storage` (Integração com Azure Blobs)
+3. **Atualize o arquivo `.env` com as credenciais do provedor selecionado:**
+   - **AWS S3:** `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `AWS_BUCKET_NAME`
+   - **GCS:** `GCS_BUCKET_NAME` (e caminho das credenciais Google)
+   - **Azure:** `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_CONTAINER_NAME`
+
+Tanto o driver de nuvem selecionado quanto seus respectivos testes mockados com `Moq` são gerados na hora, mantendo a cobertura de código da aplicação.
+
+---
+
+## 📩 Mensageria (RabbitMQ)
+
+A integração com o RabbitMQ permite publicar e subscrever a eventos de fila de forma assíncrona por meio do `RabbitMQProvider`.
+- Ativação controlada pela variável `.env` `MESSAGING_ENABLED=true`.
+- Rastreia e reconecta a filas de forma automática caso o broker caia.
+- Totalmente testado localmente via containers isolados.
+
+---
+
+## ⚙️ Instalação e Execução Local
 
 ### Pré-requisitos
 - .NET 10 SDK
 - Docker & Docker Compose
-- Ferramenta EF Core CLI instalada globalmente (`dotnet tool install --global dotnet-ef`)
+- EF Core CLI instalado globalmente:
+  ```bash
+  dotnet tool install --global dotnet-ef
+  ```
 
-### Instalação e Restauração de Pacotes
+### Configuração Inicial
+1. **Restaure as dependências NuGet:**
+   ```bash
+   dotnet restore src
+   ```
+2. **Configure suas variáveis de ambiente:**
+   Crie ou edite o arquivo `.env` na raiz do projeto:
+   ```env
+   PORT=8888
+   DATABASE_URL="Server=localhost,1433;Database=backend_c_sharp;User Id=sa;Password=YourPassword123;TrustServerCertificate=True;"
+   REDIS_URL="localhost:6379"
+   RABBIT_URL="amqp://guest:guest@localhost:5672/"
+   MESSAGING_ENABLED=true
+   JWT_SECRET="sua-chave-secreta-muito-longa-e-segura-de-exemplo-aqui"
+   ```
+
+### Execução da Infraestrutura
+Suba os containers de banco de dados, cache e mensageria:
 ```bash
-dotnet restore src
+make infra-up
 ```
 
-### Variáveis de Ambiente
-Crie ou ajuste o arquivo `.env` na raiz do projeto (o projeto lerá automaticamente usando o `dotenv.net`):
-```env
-PORT=8888
-DATABASE_URL="Server=localhost,1433;Database=backend_c_sharp;User Id=sa;Password=YourPassword123;TrustServerCertificate=True;"
-REDIS_URL="localhost:6379"
-JWT_SECRET="super-secret-key-that-is-very-long-and-secure-123456"
-```
-
-### Infraestrutura (Docker)
-Para iniciar os serviços de banco de dados (SQL Server) e cache (Redis):
-```bash
-make infra-up       # Sobe SQL Server e Redis
-make infra-down     # Para e remove os containers de infra
-make metrics-up     # Sobe Prometheus e Grafana (Acesse Grafana na porta 3001)
-make metrics-down   # Para e remove os containers de métricas
-```
-
-### Executar Migrations do Banco
+### Executar Migrations
+Crie e atualize as tabelas do banco de dados local:
 ```bash
 make db-migrate
 ```
 
-### Rodando o Projeto
+### Iniciar a API
+Inicie o servidor de desenvolvimento com Hot Reload ativo:
 ```bash
-make dev            # Inicia o servidor local em modo watch (Hot Reload)
+make dev
 ```
 
----
-
-## 🏗️ Gerador Automático de CRUD (Scaffolder)
-
-O projeto conta com um poderoso script gerador (`scripts/generate_crud.py`) que cria uma Vertical Slice completa para uma entidade definida no arquivo `Entities.cs`. Ele gera automaticamente a Controller, testes de integração robustos, configura o `ApplicationDbContext` e lida com o registro de RBAC dinamicamente.
-
-### Passo a passo para gerar uma nova API:
-
-1. **Defina a Entidade:**
-   Adicione a nova classe de modelo no final do arquivo `src/Database/Entities.cs`.
-   ```csharp
-   public class PaymentTransaction
-   {
-       public string Id { get; set; } = string.Empty;
-       public decimal Amount { get; set; }
-       public DateTime CreatedAt { get; set; }
-   }
-   ```
-
-2. **Inicie o Gerador:**
-   No terminal, execute o comando make passando o nome exato da classe que você criou:
-   ```bash
-   make generate name=PaymentTransaction
-   ```
-
-3. **Configure as Permissões (RBAC):**
-   O script irá perguntar como você quer registrar a funcionalidade no painel de permissões.
-   ```bash
-   --- RBAC Configuration ---
-   Do you want to register this feature in RBAC (DbInitializer)? [Y/n]: y
-   Feature ID (default: paymenttransaction): tx
-   Feature Name (default: PaymentTransaction): Transações
-   Feature Description (default: Auto-generated CRUD for PaymentTransaction): Gerenciamento de fluxo financeiro
-   ```
-   > **Nota sobre Segurança:** Se você responder `n` na primeira pergunta, o recurso não entrará no sistema de roles padrão e será fortemente blindado via atributo `[AuthorizeAdmin]`, sendo acessível apenas para super administradores.
-
-4. **Gere a Migration do Banco de Dados:**
-   Ao final da geração, o terminal perguntará se você quer rodar o Entity Framework:
-   ```bash
-   Do you want to create and apply an EF Core migration for PaymentTransaction? (y/N): y
-   ```
-   Digite `y` para que o schema do banco seja atualizado na hora. (Aviso: logs do *HostAbortedException* podem aparecer durante essa etapa; é um comportamento inofensivo do EF Core tooling).
-
-**Pronto!** Em menos de 10 segundos você tem uma API REST rodando em `/v1/paymenttransaction` contendo: paginação, filtros complexos por string, ordenação, permissões (`view`, `create`, `delete`, `activate`), swagger configurado, auditoria e uma suite com dezenas de testes de integração automatizados rodando contra o Testcontainers com 100% de cobertura de código.
+A API estará disponível no endereço: `http://localhost:8888/v1/docs` (Swagger UI).
 
 ---
 
-## 📖 API Documentation
+## 🧪 Rodando Testes e Cobertura
 
-A documentação interativa e os endpoints de observabilidade ficam disponíveis em:
-- **Swagger UI:** `http://localhost:8888/v1/docs`
-- **Prometheus UI:** `http://localhost:9090`
-- **Grafana Dashboard:** `http://localhost:3001` (User: `admin` / Pass: `admin`)
-- **Health Check:** `http://localhost:8888/health`
-- **PDF Debug (GET):** `http://localhost:8888/v1/debug/pdf`
-- **PDF Debug (POST):** `http://localhost:8888/v1/debug/pdf`
+O projeto garante o funcionamento correto através de testes de integração agressivos baseados em **Testcontainers.NET**. Toda vez que os testes rodam, instâncias reais do SQL Server, Redis e RabbitMQ sobem isoladamente dentro do Docker para executar as rotinas.
 
----
-
-## 🧪 Testes de Integração (49 Cenários de Compliance)
-
-O projeto possui uma suite completa de **49 testes de integração** que replicam localmente todos os cenários da suite de compliance Python (`mage-backend-compliance`). Os testes usam **Testcontainers.NET** para subir containers isolados de SQL Server e Redis automaticamente.
-
+### Executar a suíte de testes:
 ```bash
-make test           # Executa os 49 cenários de integração
+make test
 ```
 
-### Cobertura dos Cenários
-
-| Módulo | Cenários | Descrição |
-|--------|----------|-----------|
-| **01. Auth & Session** | 9 | Login, refresh token, /me, session Redis, invalidação, user/role inativos |
-| **02. RBAC** | 2 | Permissões bloqueadas (403) e permitidas por feature |
-| **03. Schema Validation** | 2 | Campos obrigatórios ausentes, rejeição de campos desconhecidos |
-| **04. Dynamic Filters** | 9 | Busca, paginação, ordenação, filtro por status, range de datas, limites |
-| **05. Audit Logs** | 3 | Registro de mutações, exclusão de requests não autenticados, scrubbing de senha |
-| **06. Soft Delete** | 2 | Anonimização LGPD de usuários, soft delete de roles |
-| **07. Observability** | 2 | Health check (/health) e Prometheus (/metrics) |
-| **08. Rate Limit** | 1 | Headers x-ratelimit-limit e x-ratelimit-remaining |
-| **09. Status Toggle** | 9 | Toggle de product/role/user com RBAC (forbidden/allowed) |
-| **10. Role Features** | 4 | Listagem de features, RBAC, schema de role por ID |
-| **11. Session Invalidation** | 4 | Invalidação ao desativar/atualizar role e user |
-| **12. Error Logs** | 1 | Registro de erros de validação no banco |
-| **13. PDF Debug** | 1 | Endpoint de geração de PDF |
-| **Total** | **49** | **Paridade total com compliance Python** |
-
----
-
-## 📋 Checklist de Paridade de Infraestrutura com o Node.js Backend
-
-Para atingir a paridade total de funcionalidades e DX (Developer Experience) com o projeto em Node.js, os seguintes itens devem ser implementados no boilerplate C# utilizando boas práticas .NET:
-
-### 1. 📦 Storage Providers (Multi-Provider)
-- [x] **Criar Abstração `IStorageProvider`:** Definir o contrato para upload, download e exclusão de arquivos.
-- [x] **Implementar Local Storage Driver:** Driver para persistir arquivos localmente em disco.
-- [x] **Drivers de Nuvem (AWS S3, Google Cloud Storage, Azure Blob):** Gerador interativo para provisionar drivers e pacotes prontos para uso em produção.
-
-### 2. 📩 Mensageria (RabbitMQ Integration)
-- [x] **Provedor de Mensageria:** Desenvolver um serviço integrado com RabbitMQ para publicação e consumo de mensagens assíncronas, ativado condicionalmente via variável de ambiente `MESSAGING_ENABLED=true` no `.env`.
-
-### 3. 🛠️ CLI de Geração de Código (Generator)
-- [x] **Scaffolder de Feature Slices (CLI):** Criar uma CLI ou script (ex: .NET tool customizada ou script de terminal) capaz de criar automaticamente a pasta de Features (Controller, DTOs, Entidades) ao informar o nome do novo recurso, acelerando a criação de CRUDs seguindo o padrão de fatias verticais.
-
-### 4. 🧪 Testes de Integração e Testcontainers
-- [x] **Suite de Testes de Integração (49 cenários):** Todos os 49 cenários da suite de compliance Python foram replicados localmente em C# com xUnit, independentes de qualquer infra externa.
-- [x] **Testcontainers.NET:** Containers reais de SQL Server e Redis são provisionados automaticamente em cada execução de teste.
-- [x] **Paridade com Compliance Python:** Cobertura completa dos 13 módulos de compliance (Auth, RBAC, Schema, Filters, Audit, Soft Delete, Observability, Rate Limit, Status, Role Features, Session Invalidation, Error Logs, PDF Debug).
-
-### 5. ⚙️ Pre-commit Hooks & Linter
-- [X] **Husky.NET & Git Hooks:** Configurar githooks para formatar automaticamente o código C# (usando `dotnet format`) e rodar testes unitários locais antes de permitir cada commit.
-
-### 6. 📊 CI/CD
-- [] **Pipeline no GitHub Actions:** Criar pipeline para rodar testes, formatar código e gerar build.
-
+### Gerar relatório de cobertura de código (Coverlet):
+```bash
+make coverage
+```
+> O Git Hook pré-commit (`Husky`) impedirá o envio de códigos que não atendam aos requisitos mínimos de cobertura de código configurados (Mínimo: 95% de Cobertura de Linha).

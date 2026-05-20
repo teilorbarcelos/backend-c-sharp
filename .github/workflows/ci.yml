@@ -1,0 +1,32 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK 10.0
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore NuGet Packages
+      run: dotnet restore src
+
+    - name: Build Project
+      run: dotnet build src/MageBackend.csproj --configuration Release --no-restore
+
+    - name: Build Tests Project
+      run: dotnet build tests/MageBackend.Tests.csproj --configuration Debug --no-restore
+
+    - name: Run Integration & Unit Tests
+      run: dotnet test tests/MageBackend.Tests.csproj -m:1 --configuration Debug --no-restore
