@@ -36,6 +36,10 @@ Um mecanismo robusto construído sobre métodos de extensão `IQueryable` (`Quer
 - Suporte nativo a exclusão lógica via campos `is_deleted` e `deleted_at`.
 - Funcionalidade para anonimização LGPD de informações sensíveis (como nome e email de usuários deletados).
 
+### Dashboard Analítico com T-SQL Nativo
+Endpoint analítico (`GET /v1/dashboard/stats`) projetado para retornar métricas consolidadas em séries temporais diárias e rankings de atividade.
+- **T-SQL Parametrizado:** Para obter máxima performance de execução no banco de dados SQL Server, as consultas de agrupamento e ordenação analítica utilizam comandos SQL nativos via `SqlQueryRaw`.
+
 ---
 
 ## 🔐 Segurança e Controle de Acesso (RBAC)

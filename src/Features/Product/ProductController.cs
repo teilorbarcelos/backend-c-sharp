@@ -118,6 +118,7 @@ namespace MageBackend.Features.Product
                 return BadRequest(new { message = "Product SKU already in use." });
             }
 
+            var userId = User.FindFirst("id")?.Value;
             var product = new Database.Product
             {
                 Id = Guid.NewGuid().ToString(),
@@ -129,7 +130,8 @@ namespace MageBackend.Features.Product
                 Description = dto.Description,
                 Active = true,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                IdUser = userId
             };
 
             _context.Product.Add(product);
