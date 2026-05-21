@@ -89,6 +89,66 @@
           "unit": "percentunit"
         }
       }
+    },
+    {
+      "title": "GC Collections (Por Minuto)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(dotnet_gc_collection_count_total[1m]) * 60",
+          "legendFormat": "Gen {{generation}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Thread Pool (Tarefas na Fila)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 24 },
+      "targets": [
+        {
+          "expr": "system_runtime_threadpool_queue_length",
+          "legendFormat": "Tarefas Enfileiradas",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Threads Ativas",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 },
+      "targets": [
+        {
+          "expr": "system_runtime_threadpool_thread_count",
+          "legendFormat": "Threads do Processo",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Taxa de Exceções (Por Minuto)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "targets": [
+        {
+          "expr": "rate(dotnet_exceptions_total[1m]) * 60",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Queries no Banco (Por Minuto)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "targets": [
+        {
+          "expr": "rate(microsoft_entityframeworkcore_microsoft_entityframeworkcore_queries[1m]) * 60",
+          "legendFormat": "Consultas EF Core",
+          "refId": "A"
+        }
+      ]
     }
   ],
   "refresh": "5s",

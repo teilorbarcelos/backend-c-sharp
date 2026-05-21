@@ -12,7 +12,9 @@ Uma arquitetura robusta, moderna e de alta performance construída com **C#**, *
 - **Banco de Dados:** SQL Server (Produção/Desenv) & Redis (Cache de Sessões e Rate Limit)
 - **Mensageria:** RabbitMQ (Comunicação Assíncrona e Filas de Mensagem)
 - **Documentação:** Swagger (OpenAPI 3.0) com UI integrada em `/v1/docs`
-- **Métricas:** Prometheus-net (Telemetria)
+- **Métricas e Observabilidade:** Prometheus-net + Grafana (com Dashboards pré-configurados)
+- **CI/CD:** GitHub Actions configurado para Build e Testes Automatizados
+- **Qualidade de Código:** Husky (Git Hooks) + dotnet format (Linting)
 - **Testes:** xUnit + Testcontainers.NET (Criação dinâmica de containers SQL Server, Redis e RabbitMQ durante o ciclo de testes)
 
 ---
@@ -57,6 +59,7 @@ Um mecanismo robusto construído sobre métodos de extensão `IQueryable` (`Quer
 
 ### Trilha de Auditoria Automática
 O `AuditLogMiddleware` intercepta e grava automaticamente na tabela `tb_audit_log` todas as operações de mutação do banco de dados (POST, PUT, DELETE, PATCH). Registra o IP do solicitante, rota, ID do usuário logado, timestamps e oculta dados confidenciais (como senhas).
+O projeto também conta com o módulo `AuditExplorerController`, que permite aos administradores buscar e filtrar esse histórico de ponta a ponta.
 
 ### Logs de Erro Centrais
 O `ErrorHandlerMiddleware` gerencia globalmente falhas de execução e validação da API. Exceções não tratadas são transformadas em respostas HTTP estruturadas amigáveis e salvas de forma detalhada na tabela `tb_error_log`.
@@ -126,6 +129,32 @@ A integração com o RabbitMQ permite publicar e subscrever a eventos de fila de
 
 ---
 
+## 📊 Observabilidade e Métricas (Prometheus & Grafana)
+
+A aplicação conta com uma stack completa de observabilidade para monitoramento em tempo real, já provisionada (Infrastructure as Code).
+
+- **Prometheus-net:** Expõe e captura automaticamente métricas do .NET 10 (Garbage Collector, CPU, Memória, Threads) e das requisições HTTP (latência, status code, taxa de erros).
+- **Grafana Dashboard Pré-configurado:** O repositório já inclui configurações e dashboards profissionais do Grafana! Ao rodar a stack, você ganha acesso instantâneo a gráficos de uso de CPU, requisições por segundo, taxa de sucesso e tempos de resposta, sem precisar de nenhuma configuração manual.
+
+### 📈 Métricas Avançadas para Alta Concorrência (Nativas do .NET)
+Para ambientes de alta volumetria, a nossa stack já suporta e exporta métricas essenciais de nível enterprise, que podem ser facilmente adicionadas aos dashboards:
+- **Thread Pool Starvation:** Monitoramento de threads em uso vs. na fila, crucial para evitar gargalos em operações assíncronas.
+- **Database Connection Pool:** Acompanhamento de conexões ativas e em espera com o SQL Server para prevenir *Connection Pool Exhaustion*.
+- **Garbage Collection (GC):** Frequência de coletas por geração (Gen 0, 1 e 2) e uso da *Large Object Heap (LOH)*, essenciais para evitar *GC Pauses* em picos de tráfego.
+- **Hit Ratio de Cache (Redis):** Taxa de acertos vs erros (*hits/misses*) nas sessões e rate limiters.
+- **Saúde das Filas (RabbitMQ):** Profundidade de filas e backpressure (mensagens *Unacked* e prontas).
+
+### Como acessar:
+1. Suba a stack de métricas:
+   ```bash
+   make metrics-up
+   ```
+2. Acesse o **Grafana** em `http://localhost:3001`
+   - **Login padrão:** `admin` / **Senha padrão:** `admin`
+3. O **Prometheus** (scraper) roda de forma invisível no background em `http://localhost:9090`.
+
+---
+
 ## ⚙️ Instalação e Execução Local
 
 ### Pré-requisitos
@@ -137,7 +166,11 @@ A integração com o RabbitMQ permite publicar e subscrever a eventos de fila de
   ```
 
 ### Configuração Inicial
-1. **Restaure as dependências NuGet:**
+1. **Instale as ferramentas locais (Husky, formatadores):**
+   ```bash
+   make setup
+   ```
+2. **Restaure as dependências NuGet:**
    ```bash
    dotnet restore src
    ```
@@ -188,3 +221,9 @@ make test
 make coverage
 ```
 > O Git Hook pré-commit (`Husky`) impedirá o envio de códigos que não atendam aos requisitos mínimos de cobertura de código configurados (Mínimo: 95% de Cobertura de Linha).
+
+### Linting e Padrão de Código
+Para garantir a qualidade, o projeto possui comandos de lint e formatação que barram commits com código sujo:
+```bash
+make lint
+```
