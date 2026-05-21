@@ -1,0 +1,52 @@
+{
+  "scripts": [
+    {
+      "name": "🛠️ Restore Packages",
+      "command": "dotnet restore src"
+    },
+    {
+      "name": "🚀 Start Development Server",
+      "command": "make dev"
+    },
+    {
+      "name": "🐳 Infrastructure: Start All (SQL Server, Redis)",
+      "command": "make infra-up"
+    },
+    {
+      "name": "🐳 Infrastructure: Remove Containers",
+      "command": "make infra-down"
+    },
+    {
+      "name": "🐳 Infrastructure: Reset (Remove Containers & Volumes)",
+      "command": "make infra-clean"
+    },
+    {
+      "name": "🗄️ Database: Run Migrations",
+      "command": "make db-migrate"
+    },
+    {
+      "name": "🧪 Run Integration Tests",
+      "command": "make test"
+    },
+    {
+      "name": "📊 Code Coverage Report",
+      "command": "make coverage"
+    },
+    {
+      "name": "✨ Generate Feature CRUD",
+      "command": "make generate"
+    },
+    {
+      "name": "🗄️ Database: Create Migration",
+      "command": "make migration"
+    },
+    {
+      "name": "🗄️ Database: Update Schema",
+      "command": "make db-update"
+    },
+    {
+      "name": "📦 Generate Storage Provider",
+      "command": "make generate-storage"
+    }
+  ]
+}

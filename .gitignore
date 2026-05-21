@@ -1,0 +1,39 @@
+# Build and Output Folders
+bin/
+obj/
+publish/
+
+# IDE and Editor files
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.idea/
+*.swp
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Environment and Secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Crash logs and diagnostics
+*.log
+*.crash
+
+# Test Coverage and Scripts
+coverage.json
+coverage.cobertura.xml
+coveragereport/
+uncovered_lines.txt
+scratch/
+*tests/coverage.json
+src/StorageData/*
