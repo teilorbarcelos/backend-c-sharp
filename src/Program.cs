@@ -7,6 +7,7 @@ using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MageBackend.Core.Middleware;
 using Prometheus;
+using Prometheus.DotNetRuntime;
 using FluentValidation;
 using MageBackend.Infrastructure.Messaging;
 using MageBackend.Infrastructure.Storage;
@@ -31,6 +32,11 @@ try
     Log.Information("Starting MageBackend API...");
 
     var builder = WebApplication.CreateBuilder(args);
+
+    if (builder.Environment.EnvironmentName != "Testing")
+    {
+        DotNetRuntimeStatsBuilder.Default().StartCollecting();
+    }
 
     builder.Host.UseSerilog();
 
@@ -84,7 +90,7 @@ try
 
     var app = builder.Build();
 
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Testing")
     {
         app.MapOpenApi();
         app.UseSwaggerUI(options =>

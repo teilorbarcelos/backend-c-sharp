@@ -52,6 +52,7 @@ namespace MageBackend.Tests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseEnvironment("Testing");
             builder.ConfigureServices(services =>
             {
                 var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(MageBackend.Infrastructure.Storage.IStorageProvider));
