@@ -100,6 +100,10 @@ namespace MageBackend.Database
         public DateTime? DeletedAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public string? IdUser { get; set; }
+        [ForeignKey("IdUser")]
+        public virtual User? User { get; set; }
     }
 
     public class Audit
