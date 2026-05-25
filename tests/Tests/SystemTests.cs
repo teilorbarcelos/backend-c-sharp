@@ -85,38 +85,18 @@ namespace MageBackend.Tests
             ClearAuthHeader();
         }
 
-        // ==========================================
-        // --- 13. PDF Debug (1 test) ---------------
-        // ==========================================
-
-        [Fact]
-        public async Task GivenPdfDebugEndpoint_WhenAccessed_ThenReturnsValidPdf()
-        {
-            var resp = await _client.GetAsync("/v1/debug/pdf");
-            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-            Assert.Equal("application/pdf", resp.Content.Headers.ContentType?.MediaType);
-        }
-
-        [Fact]
-        public async Task GivenPdfDebugEndpointPost_WhenAccessed_ThenReturnsValidPdf()
-        {
-            var resp = await _client.PostAsJsonAsync("/v1/debug/pdf", new { template = "test", data = new { } });
-            Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-            Assert.Equal("application/pdf", resp.Content.Headers.ContentType?.MediaType);
-        }
-
         [Fact]
         public async Task GivenDebugErrorEndpoint_WhenAccessed_ThenThrowsException()
         {
             var resp = await _client.GetAsync("/v1/debug/error");
-            
+
             // Print the content if not 500
             if (resp.StatusCode != HttpStatusCode.InternalServerError)
             {
                 var debugContent = await resp.Content.ReadAsStringAsync();
                 throw new Exception($"Expected 500 but got {resp.StatusCode}. Content: {debugContent}");
             }
-            
+
             Assert.Equal(HttpStatusCode.InternalServerError, resp.StatusCode);
             var content = await resp.Content.ReadAsStringAsync();
             Assert.Contains("Internal Server Error", content);
@@ -127,12 +107,12 @@ namespace MageBackend.Tests
         {
             var middleware = new MageBackend.Core.Middleware.ErrorHandlerMiddleware(context => throw new Exception("Test exception"));
             var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
-            
+
             var services = new ServiceCollection().BuildServiceProvider();
             context.RequestServices = services;
-            
+
             await middleware.InvokeAsync(context);
-            
+
             Assert.Equal(500, context.Response.StatusCode);
         }
 
@@ -144,16 +124,16 @@ namespace MageBackend.Tests
             context.Request.Method = "POST";
             context.Request.Path = "/v1/product";
             context.Request.Headers["Host"] = "localhost";
-            
+
             var responseStream = new System.IO.MemoryStream();
             context.Response.Body = responseStream;
-            
+
             var services = new ServiceCollection();
             var provider = services.BuildServiceProvider();
             context.RequestServices = provider;
-            
+
             await middleware.InvokeAsync(context);
-            
+
             await Task.Delay(150);
         }
 
@@ -163,7 +143,7 @@ namespace MageBackend.Tests
             var middleware = new MageBackend.Core.Middleware.AuditLogMiddleware(context => Task.CompletedTask);
             var method = typeof(MageBackend.Core.Middleware.AuditLogMiddleware)
                 .GetMethod("SanitizeBody", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
+
             var result = method!.Invoke(middleware, new object[] { "{invalid-json" });
             Assert.Equal("{invalid-json", result);
         }
@@ -177,7 +157,7 @@ namespace MageBackend.Tests
                 Environment.SetEnvironmentVariable("PORT", "invalid-port-format");
                 var entryPoint = typeof(Program).Assembly.EntryPoint;
                 Assert.NotNull(entryPoint);
-                
+
                 entryPoint.Invoke(null, new object[] { Array.Empty<string>() });
             }
             finally

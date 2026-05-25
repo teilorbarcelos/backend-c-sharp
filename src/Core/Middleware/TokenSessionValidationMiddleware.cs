@@ -24,8 +24,7 @@ namespace MageBackend.Core.Middleware
                    p == "/metrics" ||
                    p == "/v1/auth/login" ||
                    p == "/v1/auth/refresh" ||
-                   p.StartsWith("/v1/auth/password/") ||
-                   p.StartsWith("/v1/debug/pdf");
+                   p.StartsWith("/v1/auth/password/");
         }
 
         public async Task InvokeAsync(HttpContext context)
