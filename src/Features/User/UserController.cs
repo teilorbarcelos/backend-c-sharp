@@ -1,15 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+using System.Net.Http;
+using System.Text;
 using MageBackend.Database;
 using MageBackend.Core;
-using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
 using MageBackend.Infrastructure.Auth;
+using MageBackend.Infrastructure.Pdf;
 using FluentValidation;
 
 namespace MageBackend.Features.User
@@ -21,16 +20,19 @@ namespace MageBackend.Features.User
         private readonly ApplicationDbContext _context;
         private readonly IValidator<CreateUserDto> _createUserValidator;
         private readonly IValidator<UpdateUserDto> _updateUserValidator;
+        private readonly IPdfProvider _pdfProvider;
         private static readonly string[] AllowedFields = { "name", "email", "active", "created_at", "updated_at", "Role.name" };
 
         public UserController(
             ApplicationDbContext context,
             IValidator<CreateUserDto> createUserValidator,
-            IValidator<UpdateUserDto> updateUserValidator)
+            IValidator<UpdateUserDto> updateUserValidator,
+            IPdfProvider pdfProvider)
         {
             _context = context;
             _createUserValidator = createUserValidator;
             _updateUserValidator = updateUserValidator;
+            _pdfProvider = pdfProvider;
         }
 
         public record UserResponseDto
@@ -84,6 +86,72 @@ namespace MageBackend.Features.User
                 .ExecuteSearchAsync(req, MapToDto);
 
             return Ok(result);
+        }
+
+        [HttpGet("export/pdf")]
+        [CheckPermission("user", "view")]
+        [ProducesResponseType(typeof(FileResult), 200)]
+        [ProducesResponseType(400)]
+        public async Task<IActionResult> ExportPdf()
+        {
+            var req = SearchRequest.Parse(Request.Query, AllowedFields, out var err);
+            if (err != null) return ErrorResponse(err);
+
+            var allUsers = new List<Database.User>();
+            int page = 0;
+            int size = 100;
+            int total = 0;
+
+            var baseQuery = _context.User
+                .Include(u => u.Role)
+                .Where(u => !u.IsDeleted)
+                .ApplyActiveFilter(req.Active);
+
+            do
+            {
+                var pageReq = new SearchRequest
+                {
+                    Page = page,
+                    Size = size,
+                    SearchWord = req.SearchWord,
+                    SearchFields = req.SearchFields,
+                    CreatedAtStart = req.CreatedAtStart,
+                    CreatedAtEnd = req.CreatedAtEnd,
+                    OrderBy = req.OrderBy,
+                    OrderDirection = req.OrderDirection
+                };
+
+                var searchResult = await baseQuery.ExecuteSearchAsync(pageReq, u => u);
+                allUsers.AddRange(searchResult.Items);
+                total = searchResult.Total;
+                page++;
+            } while (allUsers.Count < total && total > 0);
+
+            try
+            {
+                var pdfData = new
+                {
+                    title = "Relatório de Usuários",
+                    generatedAt = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
+                    users = allUsers.Select(u => new
+                    {
+                        id = u.Id,
+                        name = u.Name,
+                        email = u.Email,
+                        phone = u.Phone,
+                        roleName = u.Role?.Name,
+                        active = u.Active
+                    }).ToList()
+                };
+
+                var pdfStream = await _pdfProvider.GeneratePdfAsync("user-list", pdfData);
+                Response.Headers["Content-Disposition"] = "attachment; filename=\"usuarios.pdf\"";
+                return File(pdfStream, "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("{id}")]
