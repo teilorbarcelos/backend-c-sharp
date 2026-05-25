@@ -1,6 +1,5 @@
 using dotenv.net;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MageBackend.Database;
@@ -11,6 +10,7 @@ using Prometheus.DotNetRuntime;
 using FluentValidation;
 using MageBackend.Infrastructure.Messaging;
 using MageBackend.Infrastructure.Storage;
+using MageBackend.Infrastructure.Pdf;
 using Serilog;
 using Serilog.Events;
 
@@ -55,6 +55,7 @@ try
 
     builder.Services.AddSingleton<RabbitMQProvider>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
+    builder.Services.AddHttpClient<IPdfProvider, PdfProvider>();
 
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 

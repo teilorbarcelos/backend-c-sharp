@@ -61,6 +61,13 @@ namespace MageBackend.Tests
                     services.Remove(descriptor);
                 }
                 services.AddSingleton<MageBackend.Infrastructure.Storage.IStorageProvider, MageBackend.Infrastructure.Storage.LocalStorageProvider>();
+
+                var pdfDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(MageBackend.Infrastructure.Pdf.IPdfProvider));
+                if (pdfDescriptor != null)
+                {
+                    services.Remove(pdfDescriptor);
+                }
+                services.AddSingleton<MageBackend.Infrastructure.Pdf.IPdfProvider, FakePdfProvider>();
             });
         }
     }
