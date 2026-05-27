@@ -289,7 +289,7 @@ namespace MageBackend.Features.User
             return Ok(MapToDto(user));
         }
 
-        private void UpdateAdminPassword(Database.User user, string? password)
+        private static void UpdateAdminPassword(Database.User user, string? password)
         {
             if (!string.IsNullOrEmpty(password) && user.Auth != null)
             {

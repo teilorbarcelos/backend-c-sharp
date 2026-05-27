@@ -12,7 +12,7 @@ using MageBackend.Core.Filters;
 namespace MageBackend.Features.AuditExplorer
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("admin")]
     public class AuditExplorerController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -22,7 +22,7 @@ namespace MageBackend.Features.AuditExplorer
             _context = context;
         }
 
-        [HttpGet("/admin/logs")]
+        [HttpGet("logs")]
         [ProducesResponseType(typeof(string), 200)]
         public IActionResult GetView()
         {
@@ -73,7 +73,7 @@ namespace MageBackend.Features.AuditExplorer
             public DateTime CreatedAt { get; init; }
         }
 
-        [HttpGet("/admin/api/audit")]
+        [HttpGet("api/audit")]
         [AuthorizeAdmin]
         [ProducesResponseType(typeof(AuditLogsResponse), 200)]
         [ProducesResponseType(401)]
@@ -137,7 +137,7 @@ namespace MageBackend.Features.AuditExplorer
             public DateTime CreatedAt { get; init; }
         }
 
-        [HttpGet("/admin/api/errors")]
+        [HttpGet("api/errors")]
         [AuthorizeAdmin]
         [ProducesResponseType(typeof(ErrorLogsResponse), 200)]
         [ProducesResponseType(401)]
