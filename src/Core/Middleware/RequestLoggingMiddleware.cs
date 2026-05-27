@@ -55,11 +55,16 @@ namespace MageBackend.Core.Middleware
             catch (Exception ex)
             {
                 sw.Stop();
-                Log.Error(ex,
-                    "{Method} {Path}{Query} → 500 ({Duration}ms) Unhandled exception",
-                    method, path, queryString, sw.ElapsedMilliseconds);
+                LogError(method, path, queryString, sw.ElapsedMilliseconds, ex);
                 throw;
             }
+        }
+
+        private static void LogError(string method, string path, string queryString, long duration, Exception ex)
+        {
+            Log.Error(ex,
+                "{Method} {Path}{Query} → 500 ({Duration}ms) Unhandled exception",
+                method, path, queryString, duration);
         }
     }
 }
