@@ -46,7 +46,7 @@ namespace MageBackend.Infrastructure.Messaging
             }
         }
 
-        public void Publish<T>(string queue, T message)
+        public void Publish<T>(string queue, T message) where T : class
         {
             if (_channel == null)
             {
@@ -80,7 +80,7 @@ namespace MageBackend.Infrastructure.Messaging
             );
         }
 
-        public void Subscribe<T>(string queue, Action<T> callback)
+        public void Subscribe<T>(string queue, Action<T> callback) where T : class
         {
             if (_channel == null)
             {
@@ -110,7 +110,7 @@ namespace MageBackend.Infrastructure.Messaging
             );
         }
 
-        private void HandleMessageReceived<T>(RabbitMQ.Client.Events.BasicDeliverEventArgs ea, Action<T> callback)
+        private void HandleMessageReceived<T>(RabbitMQ.Client.Events.BasicDeliverEventArgs ea, Action<T> callback) where T : class
         {
             var body = ea.Body.ToArray();
             if (body == null || body.Length == 0)

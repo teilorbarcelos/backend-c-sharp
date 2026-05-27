@@ -38,18 +38,24 @@ namespace MageBackend.Core.Middleware
                 sw.Stop();
 
                 var statusCode = context.Response.StatusCode;
-                var level = statusCode >= 500 ? Serilog.Events.LogEventLevel.Error
-                          : statusCode >= 400 ? Serilog.Events.LogEventLevel.Warning
-                          : Serilog.Events.LogEventLevel.Information;
+                var level = Serilog.Events.LogEventLevel.Information;
+                if (statusCode >= 500)
+                {
+                    level = Serilog.Events.LogEventLevel.Error;
+                }
+                else if (statusCode >= 400)
+                {
+                    level = Serilog.Events.LogEventLevel.Warning;
+                }
 
                 Log.Write(level,
                     "{Method} {Path}{Query} → {StatusCode} ({Duration}ms)",
                     method, path, queryString, statusCode, sw.ElapsedMilliseconds);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 sw.Stop();
-                Log.Error(
+                Log.Error(ex,
                     "{Method} {Path}{Query} → 500 ({Duration}ms) Unhandled exception",
                     method, path, queryString, sw.ElapsedMilliseconds);
                 throw;

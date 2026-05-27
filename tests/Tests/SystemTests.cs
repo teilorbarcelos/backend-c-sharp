@@ -135,6 +135,7 @@ namespace MageBackend.Tests
             await middleware.InvokeAsync(context);
 
             await Task.Delay(150);
+            Assert.Equal(200, context.Response.StatusCode);
         }
 
         [Fact]

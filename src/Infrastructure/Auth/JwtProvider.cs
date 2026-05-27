@@ -105,7 +105,7 @@ namespace MageBackend.Infrastructure.Auth
             }
             catch (Exception ex)
             {
-                throw new Exception("Invalid token", ex);
+                throw new UnauthorizedAccessException("Invalid token", ex);
             }
         }
     }

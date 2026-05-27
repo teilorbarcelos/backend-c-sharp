@@ -39,7 +39,7 @@ namespace MageBackend.Core.Middleware
             };
 
             var shouldAudit = mutatingMethods.Contains(method) &&
-                              !excludedPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+                              !Array.Exists(excludedPaths, p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase));
 
             if (!shouldAudit)
             {
