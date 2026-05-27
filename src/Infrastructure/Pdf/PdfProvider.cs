@@ -41,7 +41,7 @@ namespace MageBackend.Infrastructure.Pdf
             {
                 var errorMsg = await response.Content.ReadAsStringAsync();
                 response.Dispose();
-                throw new Exception($"Erro ao gerar PDF no serviço: {errorMsg}");
+                throw new InvalidOperationException($"Erro ao gerar PDF no serviço: {errorMsg}");
             }
 
             return await response.Content.ReadAsStreamAsync();

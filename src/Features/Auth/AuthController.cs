@@ -242,8 +242,7 @@ namespace MageBackend.Features.Auth
 
             if (user != null && user.Auth != null)
             {
-                var random = new Random();
-                var resetToken = random.Next(100000, 999999).ToString();
+                var resetToken = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
                 var expiration = DateTime.UtcNow.AddMinutes(15);
 
                 user.Auth.RequestPasswordToken = resetToken;

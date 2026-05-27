@@ -23,6 +23,19 @@ namespace MageBackend.Core
             errorMessage = null;
             var request = new SearchRequest();
 
+            if (!ValidateAllowedKeys(query, out errorMessage)) return request;
+            if (!ParsePagination(query, request, out errorMessage)) return request;
+            if (!ParseSearch(query, request, allowedFields, out errorMessage)) return request;
+            if (!ParseOrdering(query, request, allowedFields, out errorMessage)) return request;
+            if (!ParseDates(query, request, out errorMessage)) return request;
+            ParseActive(query, request);
+
+            return request;
+        }
+
+        private static bool ValidateAllowedKeys(IQueryCollection query, out string? errorMessage)
+        {
+            errorMessage = null;
             var knownParams = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "page", "size", "searchWord", "searchFields", "orderBy", "orderDirection", "createdAt_start", "createdAt_end", "active"
@@ -33,10 +46,15 @@ namespace MageBackend.Core
                 if (!knownParams.Contains(key))
                 {
                     errorMessage = $"Query parameter '{key}' is not allowed.";
-                    return request;
+                    return false;
                 }
             }
+            return true;
+        }
 
+        private static bool ParsePagination(IQueryCollection query, SearchRequest request, out string? errorMessage)
+        {
+            errorMessage = null;
             if (query.TryGetValue("page", out var pageVal) && int.TryParse(pageVal, out var page))
             {
                 request.Page = page;
@@ -47,67 +65,69 @@ namespace MageBackend.Core
                 if (size > 100)
                 {
                     errorMessage = "Page size cannot exceed 100.";
-                    return request;
+                    return false;
                 }
                 request.Size = size;
             }
+            return true;
+        }
 
-            if (query.TryGetValue("searchWord", out var sw))
-            {
-                request.SearchWord = sw.ToString();
-            }
-
-            if (query.TryGetValue("searchFields", out var sf))
-            {
-                request.SearchFields = sf.ToString();
-            }
+        private static bool ParseSearch(IQueryCollection query, SearchRequest request, string[] allowedFields, out string? errorMessage)
+        {
+            errorMessage = null;
+            if (query.TryGetValue("searchWord", out var sw)) request.SearchWord = sw.ToString();
+            if (query.TryGetValue("searchFields", out var sf)) request.SearchFields = sf.ToString();
 
             if (!string.IsNullOrEmpty(request.SearchWord) && string.IsNullOrEmpty(request.SearchFields))
             {
                 errorMessage = "searchFields is required when searchWord is provided.";
-                return request;
+                return false;
             }
 
             if (!string.IsNullOrEmpty(request.SearchFields))
             {
-                var fields = request.SearchFields.Split(',');
-                foreach (var field in fields)
+                foreach (var field in request.SearchFields.Split(','))
                 {
-                    var normalized = field.Trim();
-                    /* Allow mapping Role.name or Role.Name */
-                    if (!allowedFields.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+                    if (!allowedFields.Contains(field.Trim(), StringComparer.OrdinalIgnoreCase))
                     {
                         errorMessage = $"Search on field '{field}' is not allowed or invalid.";
-                        return request;
+                        return false;
                     }
                 }
             }
+            return true;
+        }
 
+        private static bool ParseOrdering(IQueryCollection query, SearchRequest request, string[] allowedFields, out string? errorMessage)
+        {
+            errorMessage = null;
             if (query.TryGetValue("orderBy", out var ob))
             {
                 request.OrderBy = ob.ToString();
                 if (!allowedFields.Contains(request.OrderBy.Trim(), StringComparer.OrdinalIgnoreCase))
                 {
                     errorMessage = $"Order by field '{ob}' is not allowed or invalid.";
-                    return request;
+                    return false;
                 }
             }
 
             if (query.TryGetValue("orderDirection", out var od))
             {
                 var odStr = od.ToString().ToLower();
-                if (odStr == "asc" || odStr == "desc")
-                {
-                    request.OrderDirection = odStr;
-                }
+                if (odStr == "asc" || odStr == "desc") request.OrderDirection = odStr;
             }
+            return true;
+        }
 
+        private static bool ParseDates(IQueryCollection query, SearchRequest request, out string? errorMessage)
+        {
+            errorMessage = null;
             if (query.TryGetValue("createdAt_start", out var cs))
             {
                 if (!DateTime.TryParseExact(cs.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dStart))
                 {
                     errorMessage = "Invalid format for createdAt_start. Use yyyy-MM-dd.";
-                    return request;
+                    return false;
                 }
                 request.CreatedAtStart = dStart;
             }
@@ -117,11 +137,15 @@ namespace MageBackend.Core
                 if (!DateTime.TryParseExact(ce.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dEnd))
                 {
                     errorMessage = "Invalid format for createdAt_end. Use yyyy-MM-dd.";
-                    return request;
+                    return false;
                 }
-                request.CreatedAtEnd = dEnd.Date.AddDays(1).AddSeconds(-1); /* include the entire day */
+                request.CreatedAtEnd = dEnd.Date.AddDays(1).AddSeconds(-1);
             }
+            return true;
+        }
 
+        private static void ParseActive(IQueryCollection query, SearchRequest request)
+        {
             if (query.TryGetValue("active", out var act))
             {
                 if (bool.TryParse(act.ToString(), out var activeBool))
@@ -137,8 +161,6 @@ namespace MageBackend.Core
                     request.Active = false;
                 }
             }
-
-            return request;
         }
     }
 

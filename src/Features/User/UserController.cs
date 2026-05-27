@@ -125,7 +125,7 @@ namespace MageBackend.Features.User
                 allUsers.AddRange(searchResult.Items);
                 total = searchResult.Total;
                 page++;
-            } while (allUsers.Count < total && total > 0);
+            } while (allUsers.Count < total);
 
             try
             {
@@ -266,50 +266,19 @@ namespace MageBackend.Features.User
 
             var adminEmail = Environment.GetEnvironmentVariable("FIRST_USER") ?? "admin@email.com";
 
-            /* Root admin protection */
             if (user.Email == adminEmail)
             {
-                if (!string.IsNullOrEmpty(dto.Password))
+                UpdateAdminPassword(user, dto.Password);
+            }
+            else
+            {
+                try
                 {
-                    var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password, 12);
-                    if (user.Auth != null)
-                    {
-                        user.Auth.Password = hashedPassword;
-                        user.Auth.UpdatedAt = DateTime.UtcNow;
-                    }
+                    await UpdateUserPropertiesAsync(user, dto);
                 }
-                user.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-                await SessionManager.InvalidateUserSessionsAsync(id);
-                return Ok(MapToDto(user));
-            }
-
-            if (dto.Name != null) user.Name = dto.Name;
-            if (dto.Email != null)
-            {
-                var emailExists = await _context.User.AnyAsync(u => u.Email == dto.Email && u.Id != id && !u.IsDeleted);
-                if (emailExists) return BadRequest(new { message = "Email already in use." });
-                user.Email = dto.Email;
-            }
-            if (dto.Phone != null) user.Phone = dto.Phone;
-            if (dto.Document != null) user.Document = dto.Document;
-            if (dto.Avatar != null) user.Avatar = dto.Avatar;
-            if (dto.Active.HasValue) user.Active = dto.Active.Value;
-
-            if (!string.IsNullOrEmpty(dto.IdRole))
-            {
-                var roleExists = await _context.Role.AnyAsync(r => r.Id == dto.IdRole && !r.IsDeleted);
-                if (!roleExists) return BadRequest(new { message = "Role not found." });
-                user.IdRole = dto.IdRole;
-            }
-
-            if (!string.IsNullOrEmpty(dto.Password))
-            {
-                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password, 12);
-                if (user.Auth != null)
+                catch (InvalidOperationException ex)
                 {
-                    user.Auth.Password = hashedPassword;
-                    user.Auth.UpdatedAt = DateTime.UtcNow;
+                    return BadRequest(new { message = ex.Message });
                 }
             }
 
@@ -318,6 +287,45 @@ namespace MageBackend.Features.User
             await SessionManager.InvalidateUserSessionsAsync(id);
 
             return Ok(MapToDto(user));
+        }
+
+        private void UpdateAdminPassword(Database.User user, string? password)
+        {
+            if (!string.IsNullOrEmpty(password) && user.Auth != null)
+            {
+                user.Auth.Password = BCrypt.Net.BCrypt.HashPassword(password, 12);
+                user.Auth.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        private async Task UpdateUserPropertiesAsync(Database.User user, UpdateUserDto dto)
+        {
+            if (dto.Name != null) user.Name = dto.Name;
+
+            if (dto.Email != null)
+            {
+                var emailExists = await _context.User.AnyAsync(u => u.Email == dto.Email && u.Id != user.Id && !u.IsDeleted);
+                if (emailExists) throw new InvalidOperationException("Email already in use.");
+                user.Email = dto.Email;
+            }
+
+            if (dto.Phone != null) user.Phone = dto.Phone;
+            if (dto.Document != null) user.Document = dto.Document;
+            if (dto.Avatar != null) user.Avatar = dto.Avatar;
+            if (dto.Active.HasValue) user.Active = dto.Active.Value;
+
+            if (!string.IsNullOrEmpty(dto.IdRole))
+            {
+                var roleExists = await _context.Role.AnyAsync(r => r.Id == dto.IdRole && !r.IsDeleted);
+                if (!roleExists) throw new InvalidOperationException("Role not found.");
+                user.IdRole = dto.IdRole;
+            }
+
+            if (!string.IsNullOrEmpty(dto.Password) && user.Auth != null)
+            {
+                user.Auth.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password, 12);
+                user.Auth.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         [HttpDelete("{id}")]

@@ -120,7 +120,7 @@ namespace MageBackend.Tests
             var provider = new PdfProvider(client, configuration);
 
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<Exception>(() => provider.GeneratePdfAsync("invalid-template", new { }));
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GeneratePdfAsync("invalid-template", new { }));
             Assert.Contains("Erro ao gerar PDF no serviço: Template not found or invalid payload", exception.Message);
         }
     }

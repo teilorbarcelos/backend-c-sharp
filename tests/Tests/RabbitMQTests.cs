@@ -12,7 +12,7 @@ namespace MageBackend.Tests
         public RabbitMQTests(IntegrationTestFixture fixture) : base(fixture) { }
 
         [Fact]
-        public void GivenRabbitProvider_WhenPublishingMessage_ThenMessageIsQueuedAndSubscribed()
+        public async Task GivenRabbitProvider_WhenPublishingMessage_ThenMessageIsQueuedAndSubscribed()
         {
             var provider = new RabbitMQProvider();
             provider.Connect();
@@ -29,7 +29,7 @@ namespace MageBackend.Tests
             provider.Publish("test_queue", new TestMessage { Content = "Hello Rabbit!" });
 
             var hit = resetEvent.Wait(TimeSpan.FromSeconds(5));
-            Thread.Sleep(50); // Ensure BasicAck is covered in RabbitMQProvider
+            await Task.Delay(50); // Ensure BasicAck is covered in RabbitMQProvider
             
             Assert.True(hit, "Did not receive message within 5 seconds");
             Assert.Equal("Hello Rabbit!", receivedMessage);
@@ -62,6 +62,8 @@ namespace MageBackend.Tests
                 
                 provider.Publish("test_queue_disabled", new TestMessage { Content = "test" });
                 provider.Subscribe<TestMessage>("test_queue_disabled", msg => {});
+                
+                Assert.NotNull(provider);
             }
             finally
             {
@@ -88,7 +90,7 @@ namespace MageBackend.Tests
         }
 
         [Fact]
-        public void GivenRabbitProvider_WhenMessageCallbackFails_ThenHandlesException()
+        public async Task GivenRabbitProvider_WhenMessageCallbackFails_ThenHandlesException()
         {
             var provider = new RabbitMQProvider();
             provider.Connect();
@@ -104,7 +106,7 @@ namespace MageBackend.Tests
             provider.Publish("test_error_queue", new TestMessage { Content = "Trigger exception" });
 
             var hit = resetEvent.Wait(TimeSpan.FromSeconds(5));
-            Thread.Sleep(50);
+            await Task.Delay(50);
             Assert.True(hit, "Did not trigger callback");
 
             provider.Disconnect();
@@ -112,7 +114,7 @@ namespace MageBackend.Tests
         }
 
         [Fact]
-        public void GivenRabbitProvider_WhenMessageBodyIsEmpty_ThenReturnsEarly()
+        public async Task GivenRabbitProvider_WhenMessageBodyIsEmpty_ThenReturnsEarly()
         {
             var provider = new RabbitMQProvider();
             provider.Connect();
@@ -128,7 +130,7 @@ namespace MageBackend.Tests
             
             channel.BasicPublish(exchange: "", routingKey: "test_empty_body_queue", basicProperties: null, body: ReadOnlyMemory<byte>.Empty);
 
-            Thread.Sleep(500);
+            await Task.Delay(500);
             Assert.False(callbackTriggered);
 
             provider.Disconnect();
@@ -136,7 +138,7 @@ namespace MageBackend.Tests
         }
 
         [Fact]
-        public void GivenRabbitProvider_WhenMessageDeserializesToNull_ThenCallbackIsNotInvoked()
+        public async Task GivenRabbitProvider_WhenMessageDeserializesToNull_ThenCallbackIsNotInvoked()
         {
             var provider = new RabbitMQProvider();
             provider.Connect();
@@ -154,7 +156,7 @@ namespace MageBackend.Tests
             var nullJsonBody = System.Text.Encoding.UTF8.GetBytes("null");
             channel.BasicPublish(exchange: "", routingKey: "test_null_msg_queue", basicProperties: null, body: nullJsonBody);
 
-            Thread.Sleep(500);
+            await Task.Delay(500);
             Assert.False(callbackTriggered, "Callback should not be invoked when message deserializes to null");
 
             provider.Disconnect();

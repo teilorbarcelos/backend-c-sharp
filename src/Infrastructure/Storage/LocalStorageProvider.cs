@@ -39,7 +39,7 @@ namespace MageBackend.Infrastructure.Storage
 
         public Task<Stream?> GetFileAsync(string fileUrl)
         {
-            var fileName = fileUrl.Split('/').Last();
+            var fileName = fileUrl.Split('/')[^1];
             var filePath = Path.Combine(_storagePath, fileName);
 
             if (!File.Exists(filePath))
@@ -51,7 +51,7 @@ namespace MageBackend.Infrastructure.Storage
 
         public Task<bool> DeleteFileAsync(string fileUrl)
         {
-            var fileName = fileUrl.Split('/').Last();
+            var fileName = fileUrl.Split('/')[^1];
             var filePath = Path.Combine(_storagePath, fileName);
 
             if (File.Exists(filePath))

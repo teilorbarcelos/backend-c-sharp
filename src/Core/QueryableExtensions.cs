@@ -12,8 +12,7 @@ namespace MageBackend.Core
     {
         public static IQueryable<T> ApplyActiveFilter<T>(this IQueryable<T> query, bool? active, bool forceDefaultTrue = false)
         {
-            var propInfo = typeof(T).GetProperties()
-                .FirstOrDefault(p => p.Name.Equals("Active", StringComparison.OrdinalIgnoreCase));
+            var propInfo = Array.Find(typeof(T).GetProperties(), p => p.Name.Equals("Active", StringComparison.OrdinalIgnoreCase));
             if (propInfo == null) return query;
 
             if (!active.HasValue && !forceDefaultTrue) return query;
@@ -29,8 +28,7 @@ namespace MageBackend.Core
 
         public static IQueryable<T> ApplyDateRange<T>(this IQueryable<T> query, DateTime? start, DateTime? end)
         {
-            var propInfo = typeof(T).GetProperties()
-                .FirstOrDefault(p => p.Name.Equals("CreatedAt", StringComparison.OrdinalIgnoreCase));
+            var propInfo = Array.Find(typeof(T).GetProperties(), p => p.Name.Equals("CreatedAt", StringComparison.OrdinalIgnoreCase));
             if (propInfo == null) return query;
 
             var parameter = Expression.Parameter(typeof(T), "x");
@@ -68,36 +66,13 @@ namespace MageBackend.Core
 
             foreach (var field in fields)
             {
-                Expression property = parameter;
-                bool skipField = false;
-
-                foreach (var member in field.Split('.'))
-                {
-                    var propInfo = property.Type.GetProperties()
-                        .FirstOrDefault(p => p.Name.Equals(member, StringComparison.OrdinalIgnoreCase));
-                    if (propInfo == null)
-                    {
-                        skipField = true;
-                        break;
-                    }
-                    property = Expression.Property(property, propInfo);
-                }
-
-                if (skipField) continue;
-
-                if (property.Type != typeof(string)) continue;
+                var property = GetNestedProperty(parameter, field);
+                if (property == null || property.Type != typeof(string)) continue;
 
                 var searchVal = Expression.Constant(searchWord);
                 var containsCall = Expression.Call(property, containsMethod, searchVal);
 
-                if (body == null)
-                {
-                    body = containsCall;
-                }
-                else
-                {
-                    body = Expression.OrElse(body, containsCall);
-                }
+                body = body == null ? containsCall : Expression.OrElse(body, containsCall);
             }
 
             if (body == null) return query;
@@ -119,15 +94,8 @@ namespace MageBackend.Core
             }
 
             var parameter = Expression.Parameter(typeof(T), "x");
-            Expression property = parameter;
-
-            foreach (var member in orderBy.Split('.'))
-            {
-                var propInfo = property.Type.GetProperties()
-                    .FirstOrDefault(p => p.Name.Equals(member, StringComparison.OrdinalIgnoreCase));
-                if (propInfo == null) return query;
-                property = Expression.Property(property, propInfo);
-            }
+            var property = GetNestedProperty(parameter, orderBy);
+            if (property == null) return query;
 
             var lambda = Expression.Lambda(property, parameter);
 
@@ -141,6 +109,18 @@ namespace MageBackend.Core
             );
 
             return query.Provider.CreateQuery<T>(resultExpression);
+        }
+
+        private static Expression? GetNestedProperty(Expression parameter, string field)
+        {
+            Expression property = parameter;
+            foreach (var member in field.Split('.'))
+            {
+                var propInfo = Array.Find(property.Type.GetProperties(), p => p.Name.Equals(member, StringComparison.OrdinalIgnoreCase));
+                if (propInfo == null) return null;
+                property = Expression.Property(property, propInfo);
+            }
+            return property;
         }
 
         public static async Task<SearchResult<TResponse>> ExecuteSearchAsync<TEntity, TResponse>(
