@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -10,9 +11,22 @@ namespace MageBackend.Core
 {
     public static class QueryableExtensions
     {
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> _propertiesCache = new();
+
+        private static PropertyInfo[] GetCachedProperties(Type type)
+        {
+            return _propertiesCache.GetOrAdd(type, t => t.GetProperties());
+        }
+
+        private static PropertyInfo? GetCachedProperty(Type type, string name)
+        {
+            var props = GetCachedProperties(type);
+            return Array.Find(props, p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        }
+
         public static IQueryable<T> ApplyActiveFilter<T>(this IQueryable<T> query, bool? active, bool forceDefaultTrue = false)
         {
-            var propInfo = Array.Find(typeof(T).GetProperties(), p => p.Name.Equals("Active", StringComparison.OrdinalIgnoreCase));
+            var propInfo = GetCachedProperty(typeof(T), "Active");
             if (propInfo == null) return query;
 
             if (!active.HasValue && !forceDefaultTrue) return query;
@@ -28,7 +42,7 @@ namespace MageBackend.Core
 
         public static IQueryable<T> ApplyDateRange<T>(this IQueryable<T> query, DateTime? start, DateTime? end)
         {
-            var propInfo = Array.Find(typeof(T).GetProperties(), p => p.Name.Equals("CreatedAt", StringComparison.OrdinalIgnoreCase));
+            var propInfo = GetCachedProperty(typeof(T), "CreatedAt");
             if (propInfo == null) return query;
 
             var parameter = Expression.Parameter(typeof(T), "x");
@@ -85,7 +99,7 @@ namespace MageBackend.Core
         {
             if (string.IsNullOrEmpty(orderBy))
             {
-                var createdAtProp = typeof(T).GetProperty("CreatedAt");
+                var createdAtProp = GetCachedProperty(typeof(T), "CreatedAt");
                 if (createdAtProp != null)
                 {
                     return ApplyOrdering(query, "CreatedAt", "desc");
@@ -116,7 +130,7 @@ namespace MageBackend.Core
             Expression property = parameter;
             foreach (var member in field.Split('.'))
             {
-                var propInfo = Array.Find(property.Type.GetProperties(), p => p.Name.Equals(member, StringComparison.OrdinalIgnoreCase));
+                var propInfo = GetCachedProperty(property.Type, member);
                 if (propInfo == null) return null;
                 property = Expression.Property(property, propInfo);
             }
