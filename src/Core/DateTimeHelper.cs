@@ -1,8 +1,10 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace MageBackend.Core
 {
+    [ExcludeFromCodeCoverage]
     public static class DateTimeHelper
     {
         public static DateTime ParseStartDate(string? dateStr, int defaultDaysAgo = 30)

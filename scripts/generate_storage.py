@@ -72,7 +72,7 @@ def run():
     
     import re
     content = re.sub(
-        r"builder\.Services\.AddSingleton<IStorageProvider, \w+>();",
+        r"builder\.Services\.AddSingleton<IStorageProvider, \w+>\(\);",
         f"builder.Services.AddSingleton<IStorageProvider, {provider_class}>();",
         content
     )

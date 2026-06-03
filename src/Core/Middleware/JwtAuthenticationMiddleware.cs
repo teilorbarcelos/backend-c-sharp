@@ -17,10 +17,9 @@ namespace MageBackend.Core.Middleware
 
         public async Task InvokeAsync(HttpContext context, JwtProvider jwtProvider)
         {
-            var authHeader = context.Request.Headers["Authorization"].ToString();
-            if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            var token = context.Request.Headers.Authorization.FirstOrDefault()?.Split(" ")[^1];
+            if (token != null)
             {
-                var token = authHeader.Substring(7).Trim();
                 try
                 {
                     var payload = jwtProvider.VerifyToken(token);

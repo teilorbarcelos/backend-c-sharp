@@ -42,7 +42,8 @@ namespace MageBackend.Tests
                 sku = $"sku-audit-{uniqueId}",
                 category = "audit-cat",
                 description = "Testing audit",
-                price = 19.99
+                price = 19.99,
+                stock = 10
             });
             Assert.Equal(HttpStatusCode.Created, createProdResp.StatusCode);
 
@@ -152,7 +153,7 @@ namespace MageBackend.Tests
                     .IgnoreQueryFilters()
                     .Include(u => u.Auth)
                     .FirstOrDefaultAsync(u => u.Id == userId);
-                
+
                 Assert.NotNull(dbUser);
                 Assert.True(dbUser.IsDeleted);
                 Assert.Contains("deleted-", dbUser.Email);
@@ -179,7 +180,8 @@ namespace MageBackend.Tests
                 sku = $"sku-soft-{uniqueId}",
                 category = "soft-cat",
                 description = "Testing soft delete",
-                price = 45.50
+                price = 45.50,
+                stock = 10
             });
             var product = await createProdResp.Content.ReadFromJsonAsync<ProductResponse>();
             Assert.NotNull(product);
@@ -193,7 +195,7 @@ namespace MageBackend.Tests
                 var dbProduct = await dbContext.Product
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(p => p.Id == product.Id);
-                
+
                 Assert.NotNull(dbProduct);
                 Assert.True(dbProduct.IsDeleted);
                 Assert.NotNull(dbProduct.DeletedAt);

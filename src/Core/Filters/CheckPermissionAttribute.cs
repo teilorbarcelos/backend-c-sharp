@@ -8,11 +8,19 @@ using MageBackend.Infrastructure.Auth;
 
 namespace MageBackend.Core.Filters
 {
+    [AttributeUsage(AttributeTargets.Class)]
+    public class FeatureNameAttribute : Attribute
+    {
+        public string Name { get; }
+        public FeatureNameAttribute(string name) => Name = name;
+    }
+
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
     public class CheckPermissionAttribute : Attribute, IAuthorizationFilter
     {
-        private readonly string _feature;
+        private readonly string? _feature;
         private readonly string _action; /* "view", "create", "delete", "activate" */
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         public CheckPermissionAttribute(string feature, string action)
         {
@@ -20,8 +28,26 @@ namespace MageBackend.Core.Filters
             _action = action.ToLower();
         }
 
+        public CheckPermissionAttribute(string action)
+        {
+            _action = action.ToLower();
+        }
+
         public void OnAuthorization(AuthorizationFilterContext context)
         {
+            var featureName = _feature;
+            if (string.IsNullOrEmpty(featureName))
+            {
+                var featureAttr = context.ActionDescriptor.EndpointMetadata
+                    .OfType<FeatureNameAttribute>()
+                    .FirstOrDefault();
+                featureName = featureAttr?.Name;
+
+                if (string.IsNullOrEmpty(featureName))
+                {
+                    throw new AppException("Feature name is not configured for this endpoint.", 500);
+                }
+            }
             var user = context.HttpContext.User;
             if (user.Identity?.IsAuthenticated != true)
             {
@@ -31,15 +57,15 @@ namespace MageBackend.Core.Filters
             var permissionsClaim = user.FindFirst("permissions")?.Value;
             if (string.IsNullOrEmpty(permissionsClaim))
             {
-                throw new AppException($"Sem permissão para {_action} em {_feature}", 403);
+                throw new AppException($"Sem permissão para {_action} em {featureName}", 403);
             }
 
-            var permissions = JsonSerializer.Deserialize<List<PermissionClaim>>(permissionsClaim, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            var perm = permissions?.FirstOrDefault(p => p.Feature.Equals(_feature, StringComparison.OrdinalIgnoreCase));
+            var permissions = JsonSerializer.Deserialize<List<PermissionClaim>>(permissionsClaim, _jsonOptions);
+            var perm = permissions?.Find(p => p.Feature.Equals(featureName, StringComparison.OrdinalIgnoreCase));
 
             if (perm == null)
             {
-                throw new AppException($"Sem permissão para {_action} em {_feature}", 403);
+                throw new AppException($"Sem permissão para {_action} em {featureName}", 403);
             }
 
             bool hasAccess = _action switch
@@ -53,7 +79,7 @@ namespace MageBackend.Core.Filters
 
             if (!hasAccess)
             {
-                throw new AppException($"Sem permissão para {_action} em {_feature}", 403);
+                throw new AppException($"Sem permissão para {_action} em {featureName}", 403);
             }
         }
     }

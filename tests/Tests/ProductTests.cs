@@ -71,20 +71,20 @@ namespace MageBackend.Tests
 
             var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
 
-            var prod1Resp = await _client.PostAsJsonAsync("/v1/product", new { name = "Prod 1", sku = $"sku-c1-{uniqueSuffix}", category = "cat-1", price = 10.0 });
+            var prod1Resp = await _client.PostAsJsonAsync("/v1/product", new { name = "Prod 1", sku = $"sku-c1-{uniqueSuffix}", category = "cat-1", price = 10.0, stock = 10 });
             var prod1 = await prod1Resp.Content.ReadFromJsonAsync<JsonElement>();
             var prod1Id = prod1.GetProperty("id").GetString()!;
 
-            var prod2Resp = await _client.PostAsJsonAsync("/v1/product", new { name = "Prod 2", sku = $"sku-c2-{uniqueSuffix}", category = "cat-1", price = 20.0 });
+            var prod2Resp = await _client.PostAsJsonAsync("/v1/product", new { name = "Prod 2", sku = $"sku-c2-{uniqueSuffix}", category = "cat-1", price = 20.0, stock = 10 });
 
             var allResp = await _client.GetAsync("/v1/product/all");
             Assert.Equal(HttpStatusCode.OK, allResp.StatusCode);
 
-            var duplicateSkuPayload = new { name = "Prod 1 Updated", sku = $"sku-c2-{uniqueSuffix}", category = "cat-1", price = 10.0 };
+            var duplicateSkuPayload = new { name = "Prod 1 Updated", sku = $"sku-c2-{uniqueSuffix}", category = "cat-1", price = 10.0, stock = 10 };
             var updateResp = await _client.PutAsJsonAsync($"/v1/product/{prod1Id}", duplicateSkuPayload);
             Assert.Equal(HttpStatusCode.BadRequest, updateResp.StatusCode);
 
-            var uniqueSkuPayload = new { name = "Prod 1 Updated Unique", sku = $"sku-c3-{uniqueSuffix}", category = "cat-1", price = 15.0 };
+            var uniqueSkuPayload = new { name = "Prod 1 Updated Unique", sku = $"sku-c3-{uniqueSuffix}", category = "cat-1", price = 15.0, stock = 10 };
             var updateUniqueResp = await _client.PutAsJsonAsync($"/v1/product/{prod1Id}", uniqueSkuPayload);
             Assert.Equal(HttpStatusCode.OK, updateUniqueResp.StatusCode);
 

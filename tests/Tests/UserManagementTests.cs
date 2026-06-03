@@ -40,7 +40,8 @@ namespace MageBackend.Tests
                 sku = $"sku-toggle-{uniqueId}",
                 category = "toggle-cat",
                 description = "Testing status toggle",
-                price = 100.00
+                price = 100.00,
+                stock = 10
             });
             var product = await createProdResp.Content.ReadFromJsonAsync<ProductResponse>();
             Assert.NotNull(product);
@@ -152,7 +153,8 @@ namespace MageBackend.Tests
                 sku = $"sku-forb-{uniqueSuffix}",
                 category = "forb-cat",
                 description = "Product",
-                price = 10.00
+                price = 10.00,
+                stock = 10
             });
             var product = await prodResp.Content.ReadFromJsonAsync<ProductResponse>();
 
@@ -211,7 +213,8 @@ namespace MageBackend.Tests
                 sku = $"sku-allw-{uniqueSuffix}",
                 category = "allw-cat",
                 description = "Product",
-                price = 10.00
+                price = 10.00,
+                stock = 10
             });
             var product = await prodResp.Content.ReadFromJsonAsync<ProductResponse>();
 

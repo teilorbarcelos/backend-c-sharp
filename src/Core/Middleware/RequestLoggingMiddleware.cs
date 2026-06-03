@@ -35,10 +35,13 @@ namespace MageBackend.Core.Middleware
             try
             {
                 await _next(context);
+            }
+            finally
+            {
                 sw.Stop();
 
                 var statusCode = context.Response.StatusCode;
-                var level = Serilog.Events.LogEventLevel.Information;
+                Serilog.Events.LogEventLevel level;
                 if (statusCode >= 500)
                 {
                     level = Serilog.Events.LogEventLevel.Error;
@@ -47,24 +50,15 @@ namespace MageBackend.Core.Middleware
                 {
                     level = Serilog.Events.LogEventLevel.Warning;
                 }
+                else
+                {
+                    level = Serilog.Events.LogEventLevel.Information;
+                }
 
                 Log.Write(level,
                     "{Method} {Path}{Query} → {StatusCode} ({Duration}ms)",
                     method, path, queryString, statusCode, sw.ElapsedMilliseconds);
             }
-            catch (Exception ex)
-            {
-                sw.Stop();
-                LogError(method, path, queryString, sw.ElapsedMilliseconds, ex);
-                throw;
-            }
-        }
-
-        private static void LogError(string method, string path, string queryString, long duration, Exception ex)
-        {
-            Log.Error(ex,
-                "{Method} {Path}{Query} → 500 ({Duration}ms) Unhandled exception",
-                method, path, queryString, duration);
         }
     }
 }

@@ -1,19 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using MageBackend.Database;
 using MageBackend.Core;
-using MageBackend.Core.Middleware;
 using MageBackend.Core.Filters;
-using MageBackend.Infrastructure.Auth;
+using MageBackend.Features.Auth.Commands;
+using MageBackend.Features.Auth.Queries;
+using MediatR;
 using FluentValidation;
-using Serilog;
 
 namespace MageBackend.Features.Auth
 {
@@ -21,8 +12,7 @@ namespace MageBackend.Features.Auth
     [Route("v1/auth")]
     public class AuthController : BaseApiController
     {
-        private readonly ApplicationDbContext _context;
-        private readonly JwtProvider _jwtProvider;
+        private readonly IMediator _mediator;
         private readonly IValidator<LoginDto> _loginValidator;
         private readonly IValidator<RefreshDto> _refreshValidator;
         private readonly IValidator<ResetRequestDto> _resetRequestValidator;
@@ -30,73 +20,19 @@ namespace MageBackend.Features.Auth
         private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
 
         public AuthController(
-            ApplicationDbContext context,
-            JwtProvider jwtProvider,
+            IMediator mediator,
             IValidator<LoginDto> loginValidator,
             IValidator<RefreshDto> refreshValidator,
             IValidator<ResetRequestDto> resetRequestValidator,
             IValidator<ResetValidateDto> resetValidateValidator,
             IValidator<ChangePasswordDto> changePasswordValidator)
         {
-            _context = context;
-            _jwtProvider = jwtProvider;
+            _mediator = mediator;
             _loginValidator = loginValidator;
             _refreshValidator = refreshValidator;
             _resetRequestValidator = resetRequestValidator;
             _resetValidateValidator = resetValidateValidator;
             _changePasswordValidator = changePasswordValidator;
-        }
-
-        public record LoginDto
-        {
-            public string Email { get; init; } = string.Empty;
-            public string Password { get; init; } = string.Empty;
-        }
-
-        public record RefreshDto
-        {
-            public string RefreshToken { get; init; } = string.Empty;
-        }
-
-        public record ResetRequestDto
-        {
-            public string Email { get; init; } = string.Empty;
-        }
-
-        public record ResetValidateDto
-        {
-            public string Email { get; init; } = string.Empty;
-            public string Token { get; init; } = string.Empty;
-        }
-
-        public record ChangePasswordDto
-        {
-            public string Email { get; init; } = string.Empty;
-            public string Token { get; init; } = string.Empty;
-            public string Password { get; init; } = string.Empty;
-        }
-
-        public record AuthUserRoleDto
-        {
-            public string Id { get; init; } = string.Empty;
-            public string Name { get; init; } = string.Empty;
-            public string? Description { get; init; }
-            public List<PermissionClaim> Permissions { get; init; } = new();
-        }
-
-        public record AuthUserDto
-        {
-            public string Id { get; init; } = string.Empty;
-            public string Name { get; init; } = string.Empty;
-            public string Email { get; init; } = string.Empty;
-            public AuthUserRoleDto Role { get; init; } = new();
-        }
-
-        public record AuthResponseDto
-        {
-            public string Token { get; init; } = string.Empty;
-            public string RefreshToken { get; init; } = string.Empty;
-            public AuthUserDto User { get; init; } = new();
         }
 
         [HttpPost("login")]
@@ -111,23 +47,10 @@ namespace MageBackend.Features.Auth
                 throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
-            var user = await _context.User
-                .Include(u => u.Auth)
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Email == dto.Email && !u.IsDeleted);
+            var result = await _mediator.Send(new LoginCommand(dto.Email, dto.Password));
+            if (!result.Success) return StatusCode(result.StatusCode, new { error = result.ErrorKey, message = result.Error });
 
-            if (user == null || user.Auth == null || user.Role == null || !user.Active || user.Auth.IsDeleted || !user.Auth.Active || !user.Role.Active)
-            {
-                return StatusCode(401, new { error = "UnauthorizedError", message = "User not found or account is disabled/removed" });
-            }
-
-            var passwordMatches = BCrypt.Net.BCrypt.Verify(dto.Password, user.Auth.Password);
-            if (!passwordMatches)
-            {
-                return StatusCode(401, new { error = "UnauthorizedError", message = "Invalid email or password" });
-            }
-
-            return await GenerateAuthResponse(user);
+            return Ok(result.Response);
         }
 
         [HttpPost("refresh")]
@@ -142,87 +65,27 @@ namespace MageBackend.Features.Auth
                 throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
-            try
-            {
-                var payload = _jwtProvider.VerifyToken(dto.RefreshToken);
+            var result = await _mediator.Send(new RefreshTokenCommand(dto.RefreshToken));
+            if (!result.Success) return StatusCode(result.StatusCode, new { error = result.ErrorKey, message = result.Error });
 
-                using var sha256 = SHA256.Create();
-                var refreshBytes = Encoding.UTF8.GetBytes(dto.RefreshToken);
-                var refreshHashBytes = sha256.ComputeHash(refreshBytes);
-                var refreshTokenHash = Convert.ToHexString(refreshHashBytes).ToLower();
-
-                var refreshKey = $"session:user:{payload.Id}:refresh:{refreshTokenHash}";
-                var redisDb = RedisProvider.Database;
-
-                var isValid = await redisDb.KeyExistsAsync(refreshKey);
-                if (!isValid)
-                {
-                    return StatusCode(401, new { error = "UnauthorizedError", message = "Sessão encerrada. Por favor, faça login novamente." });
-                }
-
-                var user = await _context.User
-                    .Include(u => u.Auth)
-                    .Include(u => u.Role)
-                    .FirstOrDefaultAsync(u => u.Id == payload.Id && !u.IsDeleted);
-
-                if (user == null || user.Auth == null || user.Role == null || !user.Active || user.Auth.IsDeleted || !user.Auth.Active || !user.Role.Active)
-                {
-                    return StatusCode(401, new { error = "UnauthorizedError", message = "User not found or account is disabled/removed" });
-                }
-
-                /* Delete the old refresh token session */
-                await redisDb.KeyDeleteAsync(refreshKey);
-
-                return await GenerateAuthResponse(user);
-            }
-            catch
-            {
-                return StatusCode(401, new { error = "UnauthorizedError", message = "Invalid or expired refresh token" });
-            }
+            return Ok(result.Response);
         }
 
         [HttpGet("me")]
         [ProducesResponseType(typeof(AuthResponseDto), 200)]
         [ProducesResponseType(401)]
-        public async Task<IActionResult> GetMe()
+        public async Task<IActionResult> GetMe([FromHeader(Name = "Authorization")] string authorization)
         {
             var userId = User.FindFirst("id")?.Value;
-            if (string.IsNullOrEmpty(userId))
+            var result = await _mediator.Send(new GetMeQuery(userId, authorization));
+            if (!result.Success)
             {
-                return StatusCode(401, new { error = "UnauthorizedError", message = "Usuário não autenticado" });
+                if (result.StatusCode == 401)
+                    return Unauthorized(new { error = "UnauthorizedError", message = result.Error });
+                return StatusCode(result.StatusCode, new { error = "UnauthorizedError", message = result.Error });
             }
 
-            var user = await _context.User
-                .Include(u => u.Auth)
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
-
-            if (user == null || user.Auth == null || !user.Active || user.Auth.IsDeleted || !user.Auth.Active)
-            {
-                return Unauthorized(new { message = "User not found or account is disabled/removed" });
-            }
-
-            var permissions = await GetUserPermissions(user.IdRole);
-            var response = new AuthResponseDto
-            {
-                Token = Request.Headers["Authorization"].ToString().Replace("Bearer ", ""),
-                RefreshToken = "", /* No refresh token returned on getMe */
-                User = new AuthUserDto
-                {
-                    Id = user.Id,
-                    Name = user.Name,
-                    Email = user.Email,
-                    Role = new AuthUserRoleDto
-                    {
-                        Id = user.IdRole,
-                        Name = user.Role?.Name ?? "",
-                        Description = user.Role?.Description,
-                        Permissions = permissions
-                    }
-                }
-            };
-
-            return Ok(response);
+            return Ok(result.Response);
         }
 
         [HttpPost("password/request")]
@@ -236,23 +99,7 @@ namespace MageBackend.Features.Auth
                 throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
-            var user = await _context.User
-                .Include(u => u.Auth)
-                .FirstOrDefaultAsync(u => u.Email == dto.Email && !u.IsDeleted);
-
-            if (user != null && user.Auth != null)
-            {
-                var resetToken = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-                var expiration = DateTime.UtcNow.AddMinutes(15);
-
-                user.Auth.RequestPasswordToken = resetToken;
-                user.Auth.RequestPasswordExpiration = expiration;
-                user.Auth.UpdatedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-                Log.Information("[PasswordReset] Reset code for {Email}: {ResetToken}", dto.Email, resetToken);
-            }
-
+            await _mediator.Send(new RequestPasswordResetCommand(dto.Email));
             return Ok(new { message = "E-mail de recuperação enviado com sucesso!" });
         }
 
@@ -269,24 +116,8 @@ namespace MageBackend.Features.Auth
                 throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
-            var user = await _context.User
-                .Include(u => u.Auth)
-                .FirstOrDefaultAsync(u => u.Email == dto.Email && !u.IsDeleted);
-
-            if (user == null || user.Auth == null)
-            {
-                return NotFound(new { message = "User not found" });
-            }
-
-            if (user.Auth.RequestPasswordToken != dto.Token)
-            {
-                return Unauthorized(new { message = "Invalid reset token" });
-            }
-
-            if (user.Auth.RequestPasswordExpiration.HasValue && user.Auth.RequestPasswordExpiration < DateTime.UtcNow)
-            {
-                return Unauthorized(new { message = "Reset token has expired" });
-            }
+            var result = await _mediator.Send(new ValidateResetTokenCommand(dto.Email, dto.Token));
+            if (!result.Success) return StatusCode(result.StatusCode, new { message = result.Error });
 
             return Ok(new { valid = true });
         }
@@ -304,33 +135,9 @@ namespace MageBackend.Features.Auth
                 throw new FluentValidation.ValidationException(validationResult.Errors);
             }
 
-            var user = await _context.User
-                .Include(u => u.Auth)
-                .FirstOrDefaultAsync(u => u.Email == dto.Email && !u.IsDeleted);
+            var result = await _mediator.Send(new ChangePasswordCommand(dto.Email, dto.Token, dto.Password));
+            if (!result.Success) return StatusCode(result.StatusCode, new { message = result.Error });
 
-            if (user == null || user.Auth == null)
-            {
-                return NotFound(new { message = "User not found" });
-            }
-
-            if (user.Auth.RequestPasswordToken != dto.Token)
-            {
-                return Unauthorized(new { message = "Invalid reset token" });
-            }
-
-            if (user.Auth.RequestPasswordExpiration.HasValue && user.Auth.RequestPasswordExpiration < DateTime.UtcNow)
-            {
-                return Unauthorized(new { message = "Reset token has expired" });
-            }
-
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password, 12);
-            user.Auth.Password = hashedPassword;
-            user.Auth.RequestPasswordToken = null;
-            user.Auth.RequestPasswordExpiration = null;
-            user.Auth.Retries = 0;
-            user.Auth.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
             return Ok(new { message = "Senha alterada com sucesso!" });
         }
 
@@ -339,83 +146,12 @@ namespace MageBackend.Features.Auth
         public async Task<IActionResult> Logout()
         {
             var userId = User.FindFirst("id")?.Value;
-            if (!string.IsNullOrEmpty(userId))
-            {
-                await SessionManager.InvalidateUserSessionsAsync(userId);
-            }
-
+            await _mediator.Send(new LogoutCommand(userId));
             return Ok(new { message = "Logout realizado com sucesso!" });
-        }
-
-        private async Task<List<PermissionClaim>> GetUserPermissions(string roleId)
-        {
-            return await _context.RoleFeature
-                .Where(rf => rf.IdRole == roleId)
-                .Select(rf => new PermissionClaim
-                {
-                    Feature = rf.IdFeature,
-                    Create = rf.Create,
-                    View = rf.View,
-                    Delete = rf.Delete,
-                    Activate = rf.Activate
-                }).ToListAsync();
-        }
-
-        private async Task<IActionResult> GenerateAuthResponse(Database.User user)
-        {
-            var permissions = await GetUserPermissions(user.IdRole);
-
-            var payload = new AuthPayload
-            {
-                Id = user.Id,
-                Email = user.Email,
-                RoleId = user.IdRole,
-                Permissions = permissions
-            };
-
-            var tokens = _jwtProvider.GenerateTokenPair(payload);
-
-            using var sha256 = SHA256.Create();
-
-            var tokenBytes = Encoding.UTF8.GetBytes(tokens.Token);
-            var tokenHashBytes = sha256.ComputeHash(tokenBytes);
-            var tokenHash = Convert.ToHexString(tokenHashBytes).ToLower();
-
-            var refreshBytes = Encoding.UTF8.GetBytes(tokens.RefreshToken);
-            var refreshHashBytes = sha256.ComputeHash(refreshBytes);
-            var refreshTokenHash = Convert.ToHexString(refreshHashBytes).ToLower();
-
-            var redisDb = RedisProvider.Database;
-
-            /* session:user:{id}:access:{tokenHash} -> payload (24h) */
-            /* session:user:{id}:refresh:{refreshTokenHash} -> "1" (7d) */
-            await redisDb.StringSetAsync($"session:user:{user.Id}:access:{tokenHash}", JsonSerializer.Serialize(payload), TimeSpan.FromDays(1));
-            await redisDb.StringSetAsync($"session:user:{user.Id}:refresh:{refreshTokenHash}", "1", TimeSpan.FromDays(7));
-
-            var response = new AuthResponseDto
-            {
-                Token = tokens.Token,
-                RefreshToken = tokens.RefreshToken,
-                User = new AuthUserDto
-                {
-                    Id = user.Id,
-                    Name = user.Name,
-                    Email = user.Email,
-                    Role = new AuthUserRoleDto
-                    {
-                        Id = user.IdRole,
-                        Name = user.Role?.Name ?? "",
-                        Description = user.Role?.Description,
-                        Permissions = permissions
-                    }
-                }
-            };
-
-            return Ok(response);
         }
     }
 
-    public class LoginDtoValidator : AbstractValidator<AuthController.LoginDto>
+    public class LoginDtoValidator : AbstractValidator<LoginDto>
     {
         public LoginDtoValidator()
         {
@@ -424,7 +160,7 @@ namespace MageBackend.Features.Auth
         }
     }
 
-    public class RefreshDtoValidator : AbstractValidator<AuthController.RefreshDto>
+    public class RefreshDtoValidator : AbstractValidator<RefreshDto>
     {
         public RefreshDtoValidator()
         {
@@ -432,7 +168,7 @@ namespace MageBackend.Features.Auth
         }
     }
 
-    public class ResetRequestDtoValidator : AbstractValidator<AuthController.ResetRequestDto>
+    public class ResetRequestDtoValidator : AbstractValidator<ResetRequestDto>
     {
         public ResetRequestDtoValidator()
         {
@@ -440,7 +176,7 @@ namespace MageBackend.Features.Auth
         }
     }
 
-    public class ResetValidateDtoValidator : AbstractValidator<AuthController.ResetValidateDto>
+    public class ResetValidateDtoValidator : AbstractValidator<ResetValidateDto>
     {
         public ResetValidateDtoValidator()
         {
@@ -449,7 +185,7 @@ namespace MageBackend.Features.Auth
         }
     }
 
-    public class ChangePasswordDtoValidator : AbstractValidator<AuthController.ChangePasswordDto>
+    public class ChangePasswordDtoValidator : AbstractValidator<ChangePasswordDto>
     {
         public ChangePasswordDtoValidator()
         {

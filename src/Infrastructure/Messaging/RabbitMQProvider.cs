@@ -13,12 +13,13 @@ namespace MageBackend.Infrastructure.Messaging
         private IModel? _channel;
         private readonly bool _enabled;
         private readonly string _rabbitUrl;
+        private static readonly string DefaultRabbitUrl = new UriBuilder("amqp", "localhost").ToString();
 
         public RabbitMQProvider()
         {
             var enabledEnv = Environment.GetEnvironmentVariable("MESSAGING_ENABLED");
             _enabled = !string.IsNullOrEmpty(enabledEnv) && (enabledEnv.Equals("true", StringComparison.OrdinalIgnoreCase) || enabledEnv == "1");
-            _rabbitUrl = Environment.GetEnvironmentVariable("RABBIT_URL") ?? "amqp://localhost";
+            _rabbitUrl = Environment.GetEnvironmentVariable("RABBIT_URL") ?? DefaultRabbitUrl;
         }
 
         public void Connect()
@@ -42,11 +43,11 @@ namespace MageBackend.Infrastructure.Messaging
             catch (Exception ex)
             {
                 Log.Error(ex, "[RabbitMQ] Connection failed: {Message}", ex.Message);
-                throw;
+                throw new InvalidOperationException("Falha na inicialização do RabbitMQ", ex);
             }
         }
 
-        public void Publish<T>(string queue, T message) where T : class
+        public void Publish<T>(string queue, T message)
         {
             if (_channel == null)
             {
@@ -148,11 +149,26 @@ namespace MageBackend.Infrastructure.Messaging
             }
         }
 
+        private bool _disposed;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    Disconnect();
+                    _channel?.Dispose();
+                    _connection?.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+
         public void Dispose()
         {
-            Disconnect();
-            _channel?.Dispose();
-            _connection?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

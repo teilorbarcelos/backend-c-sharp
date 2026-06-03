@@ -12,6 +12,8 @@ namespace MageBackend.Tests
 {
     public class StorageTests : IntegrationTestBase
     {
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
         public StorageTests(IntegrationTestFixture fixture) : base(fixture) { }
 
         [Fact]
@@ -22,7 +24,7 @@ namespace MageBackend.Tests
 
             var fileContent = new ByteArrayContent(new byte[] { 1, 2, 3, 4 });
             fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("image/jpeg");
-            
+
             using var formData = new MultipartFormDataContent();
             formData.Add(fileContent, "file", "test-image.jpg");
 
@@ -30,7 +32,7 @@ namespace MageBackend.Tests
 
             response.EnsureSuccessStatusCode();
             var json = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<UploadResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var result = JsonSerializer.Deserialize<UploadResponse>(json, _jsonOptions);
 
             Assert.NotNull(result);
             Assert.Contains("/v1/storage/", result.Url);
@@ -53,8 +55,8 @@ namespace MageBackend.Tests
             var uploadRes = await _client.PostAsync("/v1/storage/upload", formData);
             uploadRes.EnsureSuccessStatusCode();
             var json = await uploadRes.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<UploadResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            
+            var result = JsonSerializer.Deserialize<UploadResponse>(json, _jsonOptions);
+
             // 2. Extract fileName
             var uri = new Uri(result!.Url);
             var fileName = Path.GetFileName(uri.LocalPath);
@@ -65,7 +67,7 @@ namespace MageBackend.Tests
             var getRes = await _client.GetAsync($"/v1/storage/{fileName}");
             getRes.EnsureSuccessStatusCode();
             Assert.Equal("application/pdf", getRes.Content.Headers.ContentType?.MediaType);
-            
+
             var bytes = await getRes.Content.ReadAsByteArrayAsync();
             Assert.Equal(4, bytes.Length);
         }
@@ -83,7 +85,7 @@ namespace MageBackend.Tests
             formData.Add(fileContent, "file", "logo.png");
             var uploadRes = await _client.PostAsync("/v1/storage/upload", formData);
             var json = await uploadRes.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<UploadResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var result = JsonSerializer.Deserialize<UploadResponse>(json, _jsonOptions);
             var fileName = Path.GetFileName(new Uri(result!.Url).LocalPath);
 
             // 2. Delete
@@ -119,6 +121,46 @@ namespace MageBackend.Tests
 
             var deleteRes = await _client.DeleteAsync("/v1/storage/non-existent-file.png");
             Assert.Equal(HttpStatusCode.NotFound, deleteRes.StatusCode);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenUploadedUnknownFile_WhenGettingFile_ThenReturnsOctetStream()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var fileContent = new ByteArrayContent(new byte[] { 1, 2, 3, 4 });
+            fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+            using var formData = new MultipartFormDataContent();
+            formData.Add(fileContent, "file", "unknown.bin");
+            var uploadRes = await _client.PostAsync("/v1/storage/upload", formData);
+            uploadRes.EnsureSuccessStatusCode();
+            var json = await uploadRes.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<UploadResponse>(json, _jsonOptions);
+            var fileName = Path.GetFileName(new Uri(result!.Url).LocalPath);
+
+            var getRes = await _client.GetAsync($"/v1/storage/{fileName}");
+            getRes.EnsureSuccessStatusCode();
+            Assert.Equal("application/octet-stream", getRes.Content.Headers.ContentType?.MediaType);
+
+            ClearAuthHeader();
+        }
+
+        [Fact]
+        public async Task GivenEmptyFile_WhenUploading_ThenReturnsBadRequest()
+        {
+            var loginData = await LoginAsync("admin@email.com", "admin@123");
+            SetAuthHeader(loginData.Token);
+
+            var fileContent = new ByteArrayContent(Array.Empty<byte>());
+            fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("image/jpeg");
+            using var formData = new MultipartFormDataContent();
+            formData.Add(fileContent, "file", "empty.jpg");
+
+            var response = await _client.PostAsync("/v1/storage/upload", formData);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
             ClearAuthHeader();
         }

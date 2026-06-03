@@ -10,6 +10,9 @@ namespace MageBackend.Database
     {
         public static async Task InitializeAsync(ApplicationDbContext context)
         {
+            const string ManagerRoleId = "manager";
+            const string OperatorRoleId = "operator";
+
             /* Apply migrations automatically */
             await context.Database.EnsureCreatedAsync();
 
@@ -33,37 +36,37 @@ namespace MageBackend.Database
             if (!await context.Role.AnyAsync())
             {
                 var admin = new Role { Id = "administrator", Name = "Administrador", Description = "Acesso total ao sistema" };
-                var manager = new Role { Id = "manager", Name = "Gerente", Description = "Gerente operacional" };
-                var operatorRole = new Role { Id = "operator", Name = "Operador", Description = "Operador de sistema" };
+                var manager = new Role { Id = ManagerRoleId, Name = "Gerente", Description = "Gerente operacional" };
+                var operatorRole = new Role { Id = OperatorRoleId, Name = "Operador", Description = "Operador de sistema" };
 
                 await context.Role.AddRangeAsync(admin, manager, operatorRole);
                 await context.SaveChangesAsync();
 
                 /* Seed RoleFeatures for Admin */
                 var excludedFeatures = new[] { "feature", "audit", "errorlog", "error" };
-                var allFeatures = context.Feature
+                var allFeatures = await context.Feature
                     .Where(f => !excludedFeatures.Contains(f.Id))
                     .Select(f => f.Id)
-                    .ToList();
+                    .ToListAsync();
                 var adminFeatures = allFeatures
                     .Select(f => new RoleFeature { IdRole = "administrator", IdFeature = f, Create = true, View = true, Activate = true, Delete = true });
 
                 /* Seed RoleFeatures for Manager */
                 var managerFeatures = new[]
                 {
-                    new RoleFeature { IdRole = "manager", IdFeature = "dashboard", Create = true, View = true, Activate = true, Delete = true },
-                    new RoleFeature { IdRole = "manager", IdFeature = "user", Create = true, View = true, Activate = false, Delete = false },
-                    new RoleFeature { IdRole = "manager", IdFeature = "role", Create = false, View = true, Activate = false, Delete = false },
-                    new RoleFeature { IdRole = "manager", IdFeature = "product", Create = true, View = true, Activate = true, Delete = true }
+                    new RoleFeature { IdRole = ManagerRoleId, IdFeature = "dashboard", Create = true, View = true, Activate = true, Delete = true },
+                    new RoleFeature { IdRole = ManagerRoleId, IdFeature = "user", Create = true, View = true, Activate = false, Delete = false },
+                    new RoleFeature { IdRole = ManagerRoleId, IdFeature = "role", Create = false, View = true, Activate = false, Delete = false },
+                    new RoleFeature { IdRole = ManagerRoleId, IdFeature = "product", Create = true, View = true, Activate = true, Delete = true }
                 };
 
                 /* Seed RoleFeatures for Operator */
                 var operatorFeatures = new[]
                 {
-                    new RoleFeature { IdRole = "operator", IdFeature = "dashboard", Create = true, View = true, Activate = true, Delete = true },
-                    new RoleFeature { IdRole = "operator", IdFeature = "user", Create = false, View = false, Activate = false, Delete = false },
-                    new RoleFeature { IdRole = "operator", IdFeature = "role", Create = false, View = false, Activate = false, Delete = false },
-                    new RoleFeature { IdRole = "operator", IdFeature = "product", Create = false, View = true, Activate = false, Delete = false }
+                    new RoleFeature { IdRole = OperatorRoleId, IdFeature = "dashboard", Create = true, View = true, Activate = true, Delete = true },
+                    new RoleFeature { IdRole = OperatorRoleId, IdFeature = "user", Create = false, View = false, Activate = false, Delete = false },
+                    new RoleFeature { IdRole = OperatorRoleId, IdFeature = "role", Create = false, View = false, Activate = false, Delete = false },
+                    new RoleFeature { IdRole = OperatorRoleId, IdFeature = "product", Create = false, View = true, Activate = false, Delete = false }
                 };
 
                 await context.RoleFeature.AddRangeAsync(adminFeatures);

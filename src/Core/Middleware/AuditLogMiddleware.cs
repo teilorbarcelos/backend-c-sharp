@@ -85,7 +85,7 @@ namespace MageBackend.Core.Middleware
                 var userId = context.User?.FindFirst("id")?.Value;
                 var userName = context.User?.FindFirst("email")?.Value ?? "Anonymous";
                 var statusCode = context.Response.StatusCode;
-                var hostHeader = context.Request.Headers["Host"].ToString();
+                var hostHeader = context.Request.Host.ToString();
                 var remoteIp = context.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
                 var requestHost = context.Request.Host.Host;
 
@@ -142,7 +142,7 @@ namespace MageBackend.Core.Middleware
             }
         }
 
-        private string? SanitizeBody(string? body)
+        private static string? SanitizeBody(string? body)
         {
             if (string.IsNullOrEmpty(body)) return null;
 

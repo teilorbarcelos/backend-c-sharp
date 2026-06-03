@@ -222,11 +222,10 @@ namespace MageBackend.Tests
         public async Task GivenValidRefreshTokenButDeletedSession_WhenRefreshing_ThenReturnsUnauthorized()
         {
             var loginData = await LoginAsync("admin@email.com", "admin@123");
-            
+
             var redisDb = RedisProvider.Database;
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
             var refreshBytes = System.Text.Encoding.UTF8.GetBytes(loginData.RefreshToken);
-            var refreshHashBytes = sha256.ComputeHash(refreshBytes);
+            var refreshHashBytes = System.Security.Cryptography.SHA256.HashData(refreshBytes);
             var refreshTokenHash = Convert.ToHexString(refreshHashBytes).ToLower();
             var refreshKey = $"session:user:{loginData.User.Id}:refresh:{refreshTokenHash}";
 
@@ -240,12 +239,12 @@ namespace MageBackend.Tests
         public async Task GivenDeactivatedUser_WhenRefreshing_ThenReturnsUnauthorized()
         {
             var loginData = await LoginAsync("admin@email.com", "admin@123");
-            
+
             SetAuthHeader(loginData.Token);
             var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
             var email = $"refresh_deact_{uniqueSuffix}@email.com";
             var password = "Password123!";
-            
+
             var createUserResp = await _client.PostAsJsonAsync("/v1/user", new
             {
                 name = "Refresh Deact User",
@@ -255,10 +254,10 @@ namespace MageBackend.Tests
             });
             var userData = await createUserResp.Content.ReadFromJsonAsync<JsonElement>();
             var userId = userData.GetProperty("id").GetString()!;
-            
+
             ClearAuthHeader();
             var userLogin = await LoginAsync(email, password);
-            
+
             SetAuthHeader(loginData.Token);
             await _client.PatchAsJsonAsync($"/v1/user/{userId}/status", new { active = false });
             ClearAuthHeader();
@@ -272,11 +271,11 @@ namespace MageBackend.Tests
         {
             var loginData = await LoginAsync("admin@email.com", "admin@123");
             SetAuthHeader(loginData.Token);
-            
+
             var uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8);
             var email = $"me_deact_{uniqueSuffix}@email.com";
             var password = "Password123!";
-            
+
             var createUserResp = await _client.PostAsJsonAsync("/v1/user", new
             {
                 name = "Me Deact User",
@@ -286,13 +285,13 @@ namespace MageBackend.Tests
             });
             var userData = await createUserResp.Content.ReadFromJsonAsync<JsonElement>();
             var userId = userData.GetProperty("id").GetString()!;
-            
+
             ClearAuthHeader();
             var userLogin = await LoginAsync(email, password);
-            
+
             SetAuthHeader(loginData.Token);
             await _client.PatchAsJsonAsync($"/v1/user/{userId}/status", new { active = false });
-            
+
             SetAuthHeader(userLogin.Token);
             var meResp = await _client.GetAsync("/v1/auth/me");
             Assert.Equal(HttpStatusCode.Unauthorized, meResp.StatusCode);

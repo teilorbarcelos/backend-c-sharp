@@ -1,16 +1,34 @@
 using System;
+using System.IO;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+using Xunit;
+using MageBackend.Features.Storage;
+using MageBackend.Features.Product;
+using MageBackend.Features.Product.Commands;
+using MageBackend.Features.Auth;
+using MageBackend.Core;
+using MageBackend.Infrastructure.Storage;
+using MageBackend.Database;
+using MediatR;
+using FluentValidation;
+using FluentValidation.Results;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Features;
+using MageBackend.Core.Middleware;
+using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
-using Xunit;
-
 namespace MageBackend.Tests
 {
     public class InfrastructureTests : IntegrationTestBase
@@ -22,7 +40,7 @@ namespace MageBackend.Tests
         {
             var field = typeof(RedisProvider).GetField("_lazyConnection", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             Assert.NotNull(field);
-            
+
             var originalLazy = field.GetValue(null);
             try
             {
@@ -93,7 +111,7 @@ namespace MageBackend.Tests
         {
             var resp = await _client.GetAsync("/openapi/v1.json");
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-            
+
             var json = await resp.Content.ReadAsStringAsync();
             Assert.Contains("openapi", json);
         }

@@ -183,7 +183,7 @@ namespace MageBackend.Tests
             using (var scope = _fixture.Services.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                
+
                 var adminRole = await context.Role.FirstOrDefaultAsync(r => r.Id == "administrator");
                 Assert.NotNull(adminRole);
 

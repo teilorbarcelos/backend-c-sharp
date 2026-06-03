@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace MageBackend.Database
 {
-    public class ApplicationDbContext : DbContext
+    public partial class ApplicationDbContext : DbContext
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
@@ -56,8 +56,11 @@ namespace MageBackend.Database
         private static string ConvertToSnakeCase(string input)
         {
             if (string.IsNullOrEmpty(input)) return input;
-            var result = Regex.Replace(input, "([a-z0-9])([A-Z])", "$1_$2").ToLower();
+            var result = SnakeCaseRegex().Replace(input, "$1_$2").ToLower();
             return result;
         }
+
+        [GeneratedRegex("([a-z0-9])([A-Z])")]
+        private static partial Regex SnakeCaseRegex();
     }
 }
