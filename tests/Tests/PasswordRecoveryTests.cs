@@ -42,7 +42,7 @@ namespace MageBackend.Tests
             // Change it back to original for other tests
             var loginData = await LoginAsync("admin@email.com", "NewAdminPassword123!");
             Assert.NotNull(loginData.Token);
-            
+
             // Revert process
             await _client.PostAsJsonAsync("/v1/auth/password/request", new { email = "admin@email.com" });
             using (var scope = _fixture.Services.CreateScope())
@@ -104,7 +104,7 @@ namespace MageBackend.Tests
                 Assert.NotNull(user);
                 Assert.NotNull(user.Auth);
                 token = user.Auth.RequestPasswordToken ?? "";
-                
+
                 user.Auth.RequestPasswordExpiration = DateTime.UtcNow.AddMinutes(-5);
                 await dbContext.SaveChangesAsync();
             }

@@ -16,7 +16,7 @@ namespace MageBackend.Core.Middleware
             _next = next;
         }
 
-        private bool IsPublicPath(string? path)
+        private static bool IsPublicPath(string? path)
         {
             if (string.IsNullOrEmpty(path)) return false;
             var p = path.ToLower();
@@ -37,17 +37,15 @@ namespace MageBackend.Core.Middleware
 
             if (context.User.Identity?.IsAuthenticated == true)
             {
-                var authHeader = context.Request.Headers["Authorization"].ToString();
-                if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                var token = context.Request.Headers.Authorization.FirstOrDefault()?.Split(" ")[^1];
+                if (token != null)
                 {
-                    var token = authHeader.Substring(7).Trim();
                     var userId = context.User.FindFirst("id")?.Value;
 
                     if (!string.IsNullOrEmpty(userId))
                     {
-                        using var sha256 = SHA256.Create();
                         var tokenBytes = Encoding.UTF8.GetBytes(token);
-                        var hashBytes = sha256.ComputeHash(tokenBytes);
+                        var hashBytes = SHA256.HashData(tokenBytes);
                         var tokenHash = Convert.ToHexString(hashBytes).ToLower();
 
                         var sessionKey = $"session:user:{userId}:access:{tokenHash}";

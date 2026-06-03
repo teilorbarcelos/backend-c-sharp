@@ -33,7 +33,7 @@ namespace MageBackend.Tests
             await _rabbitMqContainer.StartAsync();
 
             var connectionString = _msSqlContainer.GetConnectionString();
-            
+
             // Set environment variables for the SUT
             Environment.SetEnvironmentVariable("DATABASE_URL", connectionString);
             Environment.SetEnvironmentVariable("DATABASE_URL_AUDIT", connectionString);
@@ -41,6 +41,7 @@ namespace MageBackend.Tests
             Environment.SetEnvironmentVariable("MESSAGING_ENABLED", "true");
             Environment.SetEnvironmentVariable("RABBIT_URL", _rabbitMqContainer.GetConnectionString());
             Environment.SetEnvironmentVariable("DISABLE_RATE_LIMIT", "true");
+            Environment.SetEnvironmentVariable("JWT_SECRET", "86941813-8b97-4cad-b0b2-f97734a947d7");
         }
 
         public new async Task DisposeAsync()
@@ -48,6 +49,7 @@ namespace MageBackend.Tests
             await _msSqlContainer.DisposeAsync();
             await _redisContainer.DisposeAsync();
             await _rabbitMqContainer.DisposeAsync();
+            await base.DisposeAsync();
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)

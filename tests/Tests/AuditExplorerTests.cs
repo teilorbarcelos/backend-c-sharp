@@ -64,7 +64,7 @@ namespace MageBackend.Tests
             using (var scope = _fixture.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                
+
                 var audit = new Audit
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -76,7 +76,7 @@ namespace MageBackend.Tests
                     Error = "Some error",
                     CreatedAt = DateTime.UtcNow
                 };
-                
+
                 var errorLog = new ErrorLog
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -100,7 +100,7 @@ namespace MageBackend.Tests
             var auditData = await auditResp.Content.ReadFromJsonAsync<JsonElement>();
             var auditItems = auditData.GetProperty("items");
             Assert.True(auditItems.GetArrayLength() > 0);
-            
+
             var firstAudit = auditItems[0];
             Assert.NotEmpty(firstAudit.GetProperty("id").GetString()!);
             Assert.NotEmpty(firstAudit.GetProperty("action_type").GetString()!);

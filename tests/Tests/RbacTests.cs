@@ -283,7 +283,7 @@ namespace MageBackend.Tests
 
             var roleFeatures = data.GetProperty("RoleFeature");
             Assert.Equal(JsonValueKind.Array, roleFeatures.ValueKind);
-            Assert.True(roleFeatures.GetArrayLength() == 1);
+            Assert.Equal(1, roleFeatures.GetArrayLength());
             var rf = roleFeatures[0];
             Assert.Equal("product", rf.GetProperty("id_feature").GetString());
             Assert.True(rf.GetProperty("create").GetBoolean());
@@ -420,7 +420,7 @@ namespace MageBackend.Tests
             Assert.Equal(HttpStatusCode.OK, getResp.StatusCode);
             var data = await getResp.Content.ReadFromJsonAsync<JsonElement>();
             var roleFeatures = data.GetProperty("RoleFeature");
-            Assert.True(roleFeatures.GetArrayLength() == 1);
+            Assert.Equal(1, roleFeatures.GetArrayLength());
 
             ClearAuthHeader();
         }
@@ -460,9 +460,9 @@ namespace MageBackend.Tests
         public void GivenInvalidAction_WhenAuthorizing_ThenThrows403AppException()
         {
             var attr = new CheckPermissionAttribute("product", "invalid_action");
-            
+
             var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
-            
+
             var claims = new List<System.Security.Claims.Claim>
             {
                 new System.Security.Claims.Claim("id", "123"),

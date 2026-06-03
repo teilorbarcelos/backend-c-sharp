@@ -14,7 +14,7 @@ namespace MageBackend.Tests
         [Fact]
         public async Task GivenRabbitProvider_WhenPublishingMessage_ThenMessageIsQueuedAndSubscribed()
         {
-            var provider = new RabbitMQProvider();
+            using var provider = new RabbitMQProvider();
             provider.Connect();
 
             var receivedMessage = string.Empty;
@@ -30,12 +30,11 @@ namespace MageBackend.Tests
 
             var hit = resetEvent.Wait(TimeSpan.FromSeconds(5));
             await Task.Delay(50); // Ensure BasicAck is covered in RabbitMQProvider
-            
+
             Assert.True(hit, "Did not receive message within 5 seconds");
             Assert.Equal("Hello Rabbit!", receivedMessage);
 
             provider.Disconnect();
-            provider.Dispose();
         }
 
         [Fact]
@@ -43,8 +42,8 @@ namespace MageBackend.Tests
         {
             var originalUrl = Environment.GetEnvironmentVariable("RABBIT_URL");
             Environment.SetEnvironmentVariable("RABBIT_URL", "amqp://invalid-host:5672");
-            var provider = new RabbitMQProvider();
-            
+            using var provider = new RabbitMQProvider();
+
             Assert.ThrowsAny<Exception>(() => provider.Connect());
 
             Environment.SetEnvironmentVariable("RABBIT_URL", originalUrl);
@@ -57,13 +56,13 @@ namespace MageBackend.Tests
             try
             {
                 Environment.SetEnvironmentVariable("MESSAGING_ENABLED", "false");
-                var provider = new RabbitMQProvider();
+                using var provider = new RabbitMQProvider();
                 provider.Connect();
-                
+
                 provider.Publish("test_queue_disabled", new TestMessage { Content = "test" });
-                provider.Subscribe<TestMessage>("test_queue_disabled", msg => {});
-                
-                Assert.NotNull(provider);
+                provider.Subscribe<TestMessage>("test_queue_disabled", msg => { });
+
+                Assert.True(true, "Messaging disabled should not throw exceptions");
             }
             finally
             {
@@ -78,10 +77,10 @@ namespace MageBackend.Tests
             try
             {
                 Environment.SetEnvironmentVariable("MESSAGING_ENABLED", "true");
-                var provider = new RabbitMQProvider();
-                
+                using var provider = new RabbitMQProvider();
+
                 Assert.Throws<InvalidOperationException>(() => provider.Publish("test_queue", new TestMessage { Content = "test" }));
-                Assert.Throws<InvalidOperationException>(() => provider.Subscribe<TestMessage>("test_queue", msg => {}));
+                Assert.Throws<InvalidOperationException>(() => provider.Subscribe<TestMessage>("test_queue", msg => { }));
             }
             finally
             {
@@ -92,7 +91,7 @@ namespace MageBackend.Tests
         [Fact]
         public async Task GivenRabbitProvider_WhenMessageCallbackFails_ThenHandlesException()
         {
-            var provider = new RabbitMQProvider();
+            using var provider = new RabbitMQProvider();
             provider.Connect();
 
             var resetEvent = new ManualResetEventSlim(false);
@@ -110,13 +109,12 @@ namespace MageBackend.Tests
             Assert.True(hit, "Did not trigger callback");
 
             provider.Disconnect();
-            provider.Dispose();
         }
 
         [Fact]
         public async Task GivenRabbitProvider_WhenMessageBodyIsEmpty_ThenReturnsEarly()
         {
-            var provider = new RabbitMQProvider();
+            using var provider = new RabbitMQProvider();
             provider.Connect();
 
             var callbackTriggered = false;
@@ -127,20 +125,19 @@ namespace MageBackend.Tests
 
             var channelField = typeof(RabbitMQProvider).GetField("_channel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var channel = (RabbitMQ.Client.IModel)channelField!.GetValue(provider)!;
-            
+
             channel.BasicPublish(exchange: "", routingKey: "test_empty_body_queue", basicProperties: null, body: ReadOnlyMemory<byte>.Empty);
 
             await Task.Delay(500);
             Assert.False(callbackTriggered);
 
             provider.Disconnect();
-            provider.Dispose();
         }
 
         [Fact]
         public async Task GivenRabbitProvider_WhenMessageDeserializesToNull_ThenCallbackIsNotInvoked()
         {
-            var provider = new RabbitMQProvider();
+            using var provider = new RabbitMQProvider();
             provider.Connect();
 
             var callbackTriggered = false;
@@ -152,7 +149,7 @@ namespace MageBackend.Tests
             // Send the JSON literal "null" which deserializes to null for a reference type
             var channelField = typeof(RabbitMQProvider).GetField("_channel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var channel = (RabbitMQ.Client.IModel)channelField!.GetValue(provider)!;
-            
+
             var nullJsonBody = System.Text.Encoding.UTF8.GetBytes("null");
             channel.BasicPublish(exchange: "", routingKey: "test_null_msg_queue", basicProperties: null, body: nullJsonBody);
 
@@ -160,7 +157,6 @@ namespace MageBackend.Tests
             Assert.False(callbackTriggered, "Callback should not be invoked when message deserializes to null");
 
             provider.Disconnect();
-            provider.Dispose();
         }
 
         public class TestMessage

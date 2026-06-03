@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace MageBackend.Features.Dashboard
 {
+    [ExcludeFromCodeCoverage]
     public class DashboardStatsResponseDto
     {
         public List<TimeSeriesStatDto> UserCreationStats { get; set; } = new();

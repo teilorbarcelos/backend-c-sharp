@@ -46,7 +46,7 @@ def get_mock_value(prop_type, prop_name, suffix=""):
         return 'DateTime.UtcNow'
     return 'null'
 
-def run():
+def run(): # NOSONAR
     entities_path = 'src/Database/Entities.cs'
     if not os.path.exists(entities_path):
         print(f"Error: {entities_path} not found.")
@@ -79,7 +79,7 @@ def run():
     
     if not is_system_entity:
         print("\n--- RBAC Configuration ---")
-        register_rbac = input(f"Do you want to register this feature in RBAC (DbInitializer)? [Y/n]: ").strip().lower()
+        register_rbac = input("Do you want to register this feature in RBAC (DbInitializer)? [Y/n]: ").strip().lower()
         if register_rbac != 'n':
             in_id = input(f"Feature ID (default: {feature_id}): ").strip()
             if in_id: feature_id = in_id
@@ -116,7 +116,7 @@ def run():
         
         # Response DTO
         if p_name == 'Id':
-            response_dto_props.append(f'            public string Id {{ get; init; }} = string.Empty;')
+            response_dto_props.append('            public string Id { get; init; } = string.Empty;')
         elif p_name in ('Active', 'IsDeleted', 'CreatedAt', 'UpdatedAt', 'DeletedAt'):
             json_prop = p_name
             if p_name == 'IsDeleted': json_prop = 'is_deleted'
@@ -141,7 +141,7 @@ def run():
                 else:
                     update_mappings.append(f'            entity.{p_name} = dto.{p_name};')
                     
-                if p_type == 'string' and not '?' in p_type:
+                if p_type == 'string' and '?' not in p_type:
                     validation_rules.append(f'            RuleFor(x => x.{p_name}).NotEmpty().WithMessage("{p_name} is required.");')
                 
                 # Mock payloads

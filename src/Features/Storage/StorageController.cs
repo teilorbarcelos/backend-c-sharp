@@ -11,6 +11,7 @@ namespace MageBackend.Features.Storage
     [Route("v1/storage")]
     public class StorageController : ControllerBase
     {
+        private const string ErrorFileNotFound = "File not found";
         private readonly IStorageProvider _storageProvider;
 
         public StorageController(IStorageProvider storageProvider)
@@ -39,7 +40,7 @@ namespace MageBackend.Features.Storage
         public async Task<IActionResult> GetFile(string fileName)
         {
             var stream = await _storageProvider.GetFileAsync(fileName);
-            if (stream == null) return NotFound(new { message = "File not found" });
+            if (stream == null) return NotFound(new { message = ErrorFileNotFound });
 
             var contentType = GetContentType(fileName);
             return File(stream, contentType);
@@ -52,11 +53,11 @@ namespace MageBackend.Features.Storage
         public async Task<IActionResult> DeleteFile(string fileName)
         {
             var deleted = await _storageProvider.DeleteFileAsync(fileName);
-            if (!deleted) return NotFound(new { message = "File not found" });
+            if (!deleted) return NotFound(new { message = ErrorFileNotFound });
             return NoContent();
         }
 
-        private string GetContentType(string path)
+        private static string GetContentType(string path)
         {
             var lowerPath = path.ToLowerInvariant();
             if (lowerPath.EndsWith(".jpg") || lowerPath.EndsWith(".jpeg")) return "image/jpeg";

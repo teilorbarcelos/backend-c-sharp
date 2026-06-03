@@ -43,7 +43,7 @@ namespace MageBackend.Core.Middleware
             }
         }
 
-        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+        private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             var statusCode = StatusCodes.Status500InternalServerError;
             string message = "Internal Server Error";

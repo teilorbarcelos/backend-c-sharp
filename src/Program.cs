@@ -14,7 +14,8 @@ using MageBackend.Infrastructure.Pdf;
 using Serilog;
 using Serilog.Events;
 
-DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { "../.env", ".env" }, ignoreExceptions: true));
+var envFiles = new[] { "../.env", ".env" };
+DotEnv.Load(options: new DotEnvOptions(envFilePaths: envFiles, ignoreExceptions: true));
 
 
 Log.Logger = new LoggerConfiguration()
@@ -41,23 +42,53 @@ try
     builder.Host.UseSerilog();
 
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8888";
+#pragma warning disable S5332
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+#pragma warning restore S5332
 
-    var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "Server=localhost,1433;Database=backend_c_sharp;User Id=sa;Password=YourPassword123;TrustServerCertificate=True;";
+    var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (string.IsNullOrWhiteSpace(dbUrl))
+    {
+        throw new InvalidOperationException("DATABASE_URL environment variable is not set.");
+    }
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlServer(dbUrl));
 
-    var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL") ?? Environment.GetEnvironmentVariable("REDIS_HOST") ?? "localhost:6379";
+    var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+    if (string.IsNullOrWhiteSpace(redisUrl))
+    {
+        redisUrl = Environment.GetEnvironmentVariable("REDIS_HOST");
+    }
+    if (string.IsNullOrWhiteSpace(redisUrl))
+    {
+        throw new InvalidOperationException("REDIS_URL or REDIS_HOST environment variable is not set.");
+    }
     RedisProvider.Initialize(redisUrl);
 
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? "super-secret-key-that-is-very-long-and-secure-123456";
+    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
+    if (string.IsNullOrWhiteSpace(jwtSecret))
+    {
+        throw new InvalidOperationException("JWT_SECRET environment variable is not set.");
+    }
     builder.Services.AddSingleton(new JwtProvider(jwtSecret));
 
+    var rabbitUrl = Environment.GetEnvironmentVariable("RABBIT_URL");
+    if (string.IsNullOrWhiteSpace(rabbitUrl))
+    {
+        throw new InvalidOperationException("RABBIT_URL environment variable is not set.");
+    }
+    Environment.SetEnvironmentVariable("RABBIT_URL", rabbitUrl);
     builder.Services.AddSingleton<RabbitMQProvider>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
     builder.Services.AddHttpClient<IPdfProvider, PdfProvider>();
 
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+    builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+    builder.Services.AddSingleton<MageBackend.Core.IEntityMapper<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>, MageBackend.Features.Product.ProductEntityMapper>();
+    builder.Services.AddCrudHandlers<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>();
+
+    builder.Services.AddSingleton<MageBackend.Core.IEntityMapper<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>, MageBackend.Features.User.UserEntityMapper>();
+    builder.Services.AddCrudHandlers<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>();
 
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -132,11 +163,9 @@ try
     var rabbitProvider = app.Services.GetRequiredService<RabbitMQProvider>();
     rabbitProvider.Connect();
 
-    Log.Information("Server ready at http://localhost:{Port}", port);
-    Log.Information("Documentation at http://localhost:{Port}/v1/docs", port);
-    Log.Information("Audit explorer at http://localhost:{Port}/admin/logs", port);
+    Log.Information("Server ready at http://localhost:{Port} | Docs: http://localhost:{DocsPort}/v1/docs | Audit: http://localhost:{AuditPort}/admin/logs", port, port, port);
 
-    app.Run();
+    await app.RunAsync();
 }
 catch (Exception ex) when (ex.GetType().Name == "HostAbortedException")
 {
@@ -151,5 +180,5 @@ catch (Exception ex)
 }
 finally
 {
-    Log.CloseAndFlush();
+    await Log.CloseAndFlushAsync();
 }

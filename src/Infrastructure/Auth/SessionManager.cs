@@ -6,7 +6,7 @@ using Serilog;
 
 namespace MageBackend.Infrastructure.Auth
 {
-    public class RedisProvider
+    public static class RedisProvider
     {
         private static Lazy<ConnectionMultiplexer>? _lazyConnection;
 
@@ -38,7 +38,7 @@ namespace MageBackend.Infrastructure.Auth
         public static IDatabase Database => Connection.GetDatabase();
     }
 
-    public class SessionManager
+    public static class SessionManager
     {
         public static async Task InvalidateUserSessionsAsync(string userId)
         {

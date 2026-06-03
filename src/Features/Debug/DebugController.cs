@@ -10,7 +10,7 @@ namespace MageBackend.Features.Debug
         [HttpGet("error")]
         public IActionResult ThrowError()
         {
-            throw new InvalidOperationException("Test error for debug");
+            throw new System.InvalidOperationException("Test error for debug");
         }
     }
 }

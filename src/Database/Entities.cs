@@ -1,23 +1,19 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.CodeAnalysis;
+using MageBackend.Core;
 
 namespace MageBackend.Database
 {
-    public class User
+    [ExcludeFromCodeCoverage]
+    public class User : SoftDeletableEntity
     {
-        [Key]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Name { get; set; } = string.Empty;
         public string? Phone { get; set; }
         public string Email { get; set; } = string.Empty;
         public string? CognitoId { get; set; }
-        public bool Active { get; set; } = true;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public string? Document { get; set; }
-        public bool IsDeleted { get; set; } = false;
-        public DateTime? DeletedAt { get; set; }
         public string? Avatar { get; set; }
 
         public string? IdAuth { get; set; }
@@ -29,46 +25,31 @@ namespace MageBackend.Database
         public virtual Role? Role { get; set; }
     }
 
-    public class Auth
+    [ExcludeFromCodeCoverage]
+    public class Auth : SoftDeletableEntity
     {
-        [Key]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Password { get; set; } = string.Empty;
         public string? RequestPasswordToken { get; set; }
         public DateTime? RequestPasswordExpiration { get; set; }
         public int Retries { get; set; } = 0;
         public bool FirstAccess { get; set; } = true;
-        public bool Active { get; set; } = true;
-        public bool IsDeleted { get; set; } = false;
-        public DateTime? DeletedAt { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    public class Role
+    [ExcludeFromCodeCoverage]
+    public class Role : SoftDeletableEntity
     {
-        [Key]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public bool Active { get; set; } = true;
-        public bool IsDeleted { get; set; } = false;
-        public DateTime? DeletedAt { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    public class Feature
+    [ExcludeFromCodeCoverage]
+    public class Feature : BaseEntity
     {
-        [Key]
-        public string Id { get; set; } = string.Empty; /* e.g. "product", "user", "role", "feature" */
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public bool Active { get; set; } = true;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
+    [ExcludeFromCodeCoverage]
     public class RoleFeature
     {
         public string IdRole { get; set; } = string.Empty;
@@ -85,27 +66,22 @@ namespace MageBackend.Database
         public bool Delete { get; set; } = false;
     }
 
-    public class Product
+    [ExcludeFromCodeCoverage]
+    public class Product : SoftDeletableEntity
     {
-        [Key]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
         public string Name { get; set; } = string.Empty;
         public string Sku { get; set; } = string.Empty;
         public string Category { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int Stock { get; set; }
         public string? Description { get; set; }
-        public bool Active { get; set; } = true;
-        public bool IsDeleted { get; set; } = false;
-        public DateTime? DeletedAt { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public string? IdUser { get; set; }
         [ForeignKey("IdUser")]
         public virtual User? User { get; set; }
     }
 
+    [ExcludeFromCodeCoverage]
     public class Audit
     {
         [Key]

@@ -19,7 +19,7 @@ using Xunit;
 
 namespace MageBackend.Tests
 {
-public abstract class IntegrationTestBase : IClassFixture<IntegrationTestFixture>
+    public abstract class IntegrationTestBase : IClassFixture<IntegrationTestFixture>
     {
         protected readonly IntegrationTestFixture _fixture;
         protected readonly HttpClient _client;
@@ -100,7 +100,7 @@ public abstract class IntegrationTestBase : IClassFixture<IntegrationTestFixture
             return (roleId, userId, loginBody.Token);
         }
 
-        
+
         // Helpers classes matching API structures
         public record LoginResponse
         {
@@ -136,6 +136,6 @@ public abstract class IntegrationTestBase : IClassFixture<IntegrationTestFixture
             public int Total { get; init; }
             public int Page { get; init; }
         }
-    
+
     }
 }

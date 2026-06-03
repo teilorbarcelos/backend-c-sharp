@@ -23,11 +23,21 @@ namespace MageBackend.Core
             errorMessage = null;
             var request = new SearchRequest();
 
-            if (!ValidateAllowedKeys(query, out errorMessage)) return request;
-            if (!ParsePagination(query, request, out errorMessage)) return request;
-            if (!ParseSearch(query, request, allowedFields, out errorMessage)) return request;
-            if (!ParseOrdering(query, request, allowedFields, out errorMessage)) return request;
-            if (!ParseDates(query, request, out errorMessage)) return request;
+            if (!ValidateAllowedKeys(query, out errorMessage))
+                return request;
+
+            ParsePagination(query, request, out errorMessage);
+            if (errorMessage != null) return request;
+
+            ParseSearch(query, request, allowedFields, out errorMessage);
+            if (errorMessage != null) return request;
+
+            ParseOrdering(query, request, allowedFields, out errorMessage);
+            if (errorMessage != null) return request;
+
+            ParseDates(query, request, out errorMessage);
+            if (errorMessage != null) return request;
+
             ParseActive(query, request);
 
             return request;
@@ -41,18 +51,16 @@ namespace MageBackend.Core
                 "page", "size", "searchWord", "searchFields", "orderBy", "orderDirection", "createdAt_start", "createdAt_end", "active"
             };
 
-            foreach (var key in query.Keys)
+            var invalidKey = query.Keys.FirstOrDefault(k => !knownParams.Contains(k));
+            if (invalidKey != null)
             {
-                if (!knownParams.Contains(key))
-                {
-                    errorMessage = $"Query parameter '{key}' is not allowed.";
-                    return false;
-                }
+                errorMessage = $"Query parameter '{invalidKey}' is not allowed.";
+                return false;
             }
             return true;
         }
 
-        private static bool ParsePagination(IQueryCollection query, SearchRequest request, out string? errorMessage)
+        private static void ParsePagination(IQueryCollection query, SearchRequest request, out string? errorMessage)
         {
             errorMessage = null;
             if (query.TryGetValue("page", out var pageVal) && int.TryParse(pageVal, out var page))
@@ -65,14 +73,13 @@ namespace MageBackend.Core
                 if (size > 100)
                 {
                     errorMessage = "Page size cannot exceed 100.";
-                    return false;
+                    return;
                 }
                 request.Size = size;
             }
-            return true;
         }
 
-        private static bool ParseSearch(IQueryCollection query, SearchRequest request, string[] allowedFields, out string? errorMessage)
+        private static void ParseSearch(IQueryCollection query, SearchRequest request, string[] allowedFields, out string? errorMessage)
         {
             errorMessage = null;
             if (query.TryGetValue("searchWord", out var sw)) request.SearchWord = sw.ToString();
@@ -81,24 +88,25 @@ namespace MageBackend.Core
             if (!string.IsNullOrEmpty(request.SearchWord) && string.IsNullOrEmpty(request.SearchFields))
             {
                 errorMessage = "searchFields is required when searchWord is provided.";
-                return false;
+                return;
             }
 
             if (!string.IsNullOrEmpty(request.SearchFields))
             {
-                foreach (var field in request.SearchFields.Split(','))
+                var fields = request.SearchFields.Split(',');
+                foreach (var field in fields)
                 {
-                    if (!allowedFields.Contains(field.Trim(), StringComparer.OrdinalIgnoreCase))
+                    var normalized = field.Trim();
+                    if (!allowedFields.Contains(normalized, StringComparer.OrdinalIgnoreCase))
                     {
                         errorMessage = $"Search on field '{field}' is not allowed or invalid.";
-                        return false;
+                        return;
                     }
                 }
             }
-            return true;
         }
 
-        private static bool ParseOrdering(IQueryCollection query, SearchRequest request, string[] allowedFields, out string? errorMessage)
+        private static void ParseOrdering(IQueryCollection query, SearchRequest request, string[] allowedFields, out string? errorMessage)
         {
             errorMessage = null;
             if (query.TryGetValue("orderBy", out var ob))
@@ -107,19 +115,21 @@ namespace MageBackend.Core
                 if (!allowedFields.Contains(request.OrderBy.Trim(), StringComparer.OrdinalIgnoreCase))
                 {
                     errorMessage = $"Order by field '{ob}' is not allowed or invalid.";
-                    return false;
+                    return;
                 }
             }
 
             if (query.TryGetValue("orderDirection", out var od))
             {
                 var odStr = od.ToString().ToLower();
-                if (odStr == "asc" || odStr == "desc") request.OrderDirection = odStr;
+                if (odStr == "asc" || odStr == "desc")
+                {
+                    request.OrderDirection = odStr;
+                }
             }
-            return true;
         }
 
-        private static bool ParseDates(IQueryCollection query, SearchRequest request, out string? errorMessage)
+        private static void ParseDates(IQueryCollection query, SearchRequest request, out string? errorMessage)
         {
             errorMessage = null;
             if (query.TryGetValue("createdAt_start", out var cs))
@@ -127,7 +137,7 @@ namespace MageBackend.Core
                 if (!DateTime.TryParseExact(cs.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dStart))
                 {
                     errorMessage = "Invalid format for createdAt_start. Use yyyy-MM-dd.";
-                    return false;
+                    return;
                 }
                 request.CreatedAtStart = dStart;
             }
@@ -137,26 +147,26 @@ namespace MageBackend.Core
                 if (!DateTime.TryParseExact(ce.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dEnd))
                 {
                     errorMessage = "Invalid format for createdAt_end. Use yyyy-MM-dd.";
-                    return false;
+                    return;
                 }
                 request.CreatedAtEnd = dEnd.Date.AddDays(1).AddSeconds(-1);
             }
-            return true;
         }
 
         private static void ParseActive(IQueryCollection query, SearchRequest request)
         {
             if (query.TryGetValue("active", out var act))
             {
-                if (bool.TryParse(act.ToString(), out var activeBool))
+                var actStr = act.ToString();
+                if (bool.TryParse(actStr, out var activeBool))
                 {
                     request.Active = activeBool;
                 }
-                else if (act.ToString().Equals("1") || act.ToString().Equals("true", StringComparison.OrdinalIgnoreCase))
+                else if (actStr.Equals("1") || actStr.Equals("true", StringComparison.OrdinalIgnoreCase))
                 {
                     request.Active = true;
                 }
-                else if (act.ToString().Equals("0") || act.ToString().Equals("false", StringComparison.OrdinalIgnoreCase))
+                else if (actStr.Equals("0") || actStr.Equals("false", StringComparison.OrdinalIgnoreCase))
                 {
                     request.Active = false;
                 }
@@ -166,7 +176,7 @@ namespace MageBackend.Core
 
     public class SearchResult<T>
     {
-        public List<T> Items { get; set; } = new();
+        public List<T> Items { get; set; }
         public int Total { get; set; }
         public int Page { get; set; }
         public int Size { get; set; }

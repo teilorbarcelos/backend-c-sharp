@@ -29,7 +29,7 @@ namespace MageBackend.Tests
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             var result = await response.Content.ReadFromJsonAsync<DashboardStatsResponseDto>();
-            
+
             result.Should().NotBeNull();
             result!.UserCreationStats.Should().NotBeNull();
             result.ProductCreationStats.Should().NotBeNull();
