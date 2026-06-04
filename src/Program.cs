@@ -2,6 +2,7 @@ using dotenv.net;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MageBackend.Core;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MageBackend.Core.Middleware;
@@ -46,37 +47,17 @@ try
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 #pragma warning restore S5332
 
-    var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (string.IsNullOrWhiteSpace(dbUrl))
-    {
-        throw new InvalidOperationException("DATABASE_URL environment variable is not set.");
-    }
+    var dbUrl = EnvValidator.Required("DATABASE_URL");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlServer(dbUrl));
 
-    var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-    if (string.IsNullOrWhiteSpace(redisUrl))
-    {
-        redisUrl = Environment.GetEnvironmentVariable("REDIS_HOST");
-    }
-    if (string.IsNullOrWhiteSpace(redisUrl))
-    {
-        throw new InvalidOperationException("REDIS_URL or REDIS_HOST environment variable is not set.");
-    }
+    var redisUrl = EnvValidator.RequiredAny("REDIS_URL", "REDIS_HOST");
     RedisProvider.Initialize(redisUrl);
 
-    var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
-    if (string.IsNullOrWhiteSpace(jwtSecret))
-    {
-        throw new InvalidOperationException("JWT_SECRET environment variable is not set.");
-    }
+    var jwtSecret = EnvValidator.Required("JWT_SECRET");
     builder.Services.AddSingleton(new JwtProvider(jwtSecret));
 
-    var rabbitUrl = Environment.GetEnvironmentVariable("RABBIT_URL");
-    if (string.IsNullOrWhiteSpace(rabbitUrl))
-    {
-        throw new InvalidOperationException("RABBIT_URL environment variable is not set.");
-    }
+    var rabbitUrl = EnvValidator.Required("RABBIT_URL");
     Environment.SetEnvironmentVariable("RABBIT_URL", rabbitUrl);
     builder.Services.AddSingleton<RabbitMQProvider>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
