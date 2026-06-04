@@ -1,3 +1,4 @@
+using MageBackend.Core;
 using MageBackend.Infrastructure.Auth;
 using Microsoft.AspNetCore.Http;
 using Serilog;
@@ -9,14 +10,15 @@ namespace MageBackend.Core.Middleware
 {
     public class RateLimitMiddleware
     {
-        private const int DefaultLimit = 100;
-        private const int DefaultWindowSeconds = 60;
-        private const string KeyPrefix = "ratelimit:ip:";
-
         /*
-         * Script Lua atômico: INCR + EXPIRE (apenas no 1º hit) + retorna [count, ttl].
-         * Garante que todas as réplicas compartilhem o mesmo contador via Redis,
-         * eliminando o vetor de bypass "N réplicas × limite" do contador in-memory anterior.
+         * Limites por endpoint definidos em RateLimitConfig (single source of truth).
+         * Cada endpoint tem bucket próprio no Redis (chave ratelimit:{Key}:{ip}),
+         * então esgotar o limite de login não afeta a listagem de user, e
+         * vice-versa. Defense em profundidade contra DoS coordenado em
+         * múltiplos endpoints.
+         *
+         * Defaults globais ainda são env-overridable (RATE_LIMIT_MAX /
+         * RATE_LIMIT_WINDOW_SECONDS) para tuning em runtime sem deploy.
          */
         private static readonly LuaScript RateLimitScript = LuaScript.Prepare(
             "local current = redis.call('INCR', @key)\n" +
@@ -37,33 +39,48 @@ namespace MageBackend.Core.Middleware
 
         public async Task InvokeAsync(HttpContext context)
         {
-            var limit = ReadEnvInt("RATE_LIMIT_MAX", DefaultLimit);
-            var windowSeconds = ReadEnvInt("RATE_LIMIT_WINDOW_SECONDS", DefaultWindowSeconds);
+            var path = context.Request.Path.Value;
 
+            if (RateLimitConfig.IsExempt(path))
+            {
+                await _next(context);
+                return;
+            }
+
+            var limit = RateLimitConfig.GetFor(path);
+            var max = ApplyEnvOverride(limit.Max);
+            var windowSeconds = ApplyEnvOverrideWindow(limit.WindowSeconds);
+
+            /*
+             * Mesmo quando o rate limit está desabilitado (kill switch) ou o
+             * Redis está fora, expomos os headers com limit=remaining para
+             * que o cliente saiba qual seria o teto. Não incrementamos o
+             * contador — só exibimos o valor configurado.
+             */
             if (IsDisabled())
             {
-                WriteHeaders(context, limit, limit, windowSeconds);
+                WriteHeaders(context, max, max, windowSeconds);
                 await _next(context);
                 return;
             }
 
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-            var key = KeyPrefix + ip;
+            var key = $"ratelimit:{limit.Key}:{ip}";
 
             var (count, ttl) = await TryIncrementAsync(key, windowSeconds);
 
             if (count < 0)
             {
-                WriteHeaders(context, limit, limit, windowSeconds);
+                WriteHeaders(context, max, max, windowSeconds);
                 await _next(context);
                 return;
             }
 
-            var remaining = (int)Math.Max(0, limit - count);
+            var remaining = (int)Math.Max(0, max - count);
             var resetSeconds = ttl > 0 ? (int)ttl : windowSeconds;
-            WriteHeaders(context, limit, remaining, resetSeconds);
+            WriteHeaders(context, max, remaining, resetSeconds);
 
-            if (count > limit)
+            if (count > max)
             {
                 await Reject429Async(context);
                 return;
@@ -76,7 +93,7 @@ namespace MageBackend.Core.Middleware
         {
             try
             {
-                var db = (DatabaseAccessor ?? (() => RedisProvider.Database))();
+                var db = DatabaseAccessor != null ? DatabaseAccessor() : RedisProvider.Database;
                 var result = await db.ScriptEvaluateAsync(
                     RateLimitScript,
                     new { key = (RedisKey)key, window = windowSeconds });
@@ -105,6 +122,24 @@ namespace MageBackend.Core.Middleware
                    Environment.GetEnvironmentVariable("ENVIRONMENT") == "test";
         }
 
+        /*
+         * Env vars sobrescrevem apenas o limite/window do bucket default.
+         * Endpoints específicos (login, refresh, etc.) sempre usam os
+         * valores hard-coded de RateLimitConfig — são decisões de segurança,
+         * não de tuning operacional.
+         */
+        private static int ApplyEnvOverride(int defaultMax)
+        {
+            var raw = Environment.GetEnvironmentVariable("RATE_LIMIT_MAX");
+            return int.TryParse(raw, out var parsed) && parsed > 0 ? parsed : defaultMax;
+        }
+
+        private static int ApplyEnvOverrideWindow(int defaultWindow)
+        {
+            var raw = Environment.GetEnvironmentVariable("RATE_LIMIT_WINDOW_SECONDS");
+            return int.TryParse(raw, out var parsed) && parsed > 0 ? parsed : defaultWindow;
+        }
+
         private static void WriteHeaders(HttpContext context, int limit, int remaining, int resetSeconds)
         {
             context.Response.Headers["x-ratelimit-limit"] = limit.ToString();
@@ -117,12 +152,6 @@ namespace MageBackend.Core.Middleware
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync("{\"message\": \"Too many requests. Please try again later.\"}");
-        }
-
-        private static int ReadEnvInt(string name, int defaultValue)
-        {
-            var raw = Environment.GetEnvironmentVariable(name);
-            return int.TryParse(raw, out var parsed) && parsed > 0 ? parsed : defaultValue;
         }
     }
 }
