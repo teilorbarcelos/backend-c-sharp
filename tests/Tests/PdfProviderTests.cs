@@ -123,5 +123,40 @@ namespace MageBackend.Tests
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GeneratePdfAsync("invalid-template", new { }));
             Assert.Contains("Erro ao gerar PDF no serviço: Template not found or invalid payload", exception.Message);
         }
+
+        [Fact]
+        public async Task GivenPdfProvider_WhenBuildingRequest_ThenTargetsConfiguredEndpointWithJsonPayload()
+        {
+            var client = new HttpClient(new MockHttpMessageHandler((req, token) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
+            var configSettings = new Dictionary<string, string?>
+            {
+                { "PDF_SERVICE_URL", "http://custom-host:5555" }
+            };
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(configSettings).Build();
+            var provider = new PdfProvider(client, configuration);
+
+            var request = provider.BuildRequest("invoice", new { userId = 42 });
+
+            Assert.Equal(HttpMethod.Post, request.Method);
+            Assert.Equal("http://custom-host:5555/v1/pdf/generate", request.RequestUri?.ToString());
+            Assert.NotNull(request.Content);
+            Assert.Equal("application/json", request.Content.Headers.ContentType?.MediaType);
+            var payload = await request.Content.ReadAsStringAsync();
+            Assert.Contains("\"template\":\"invoice\"", payload);
+            Assert.Contains("\"userId\":42", payload);
+        }
+
+        [Fact]
+        public async Task GivenErrorResponse_WhenReadingErrorBody_ThenReturnsBodyString()
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent("upstream crashed")
+            };
+
+            var body = await PdfProvider.ReadErrorBodyAsync(response);
+
+            Assert.Equal("upstream crashed", body);
+        }
     }
 }

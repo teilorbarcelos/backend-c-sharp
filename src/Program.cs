@@ -62,7 +62,8 @@ try
     Environment.SetEnvironmentVariable("RABBIT_URL", rabbitUrl);
     builder.Services.AddSingleton<RabbitMQProvider>();
     builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
-    builder.Services.AddHttpClient<IPdfProvider, PdfProvider>();
+    builder.Services.AddHttpClient<IPdfProvider, PdfProvider>()
+        .AddStandardResilienceHandler(PdfResilienceConfig.Configure);
 
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
     builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());

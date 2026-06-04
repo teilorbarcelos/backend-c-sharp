@@ -3,6 +3,17 @@ using System.Text.Json;
 
 namespace MageBackend.Infrastructure.Pdf
 {
+    /*
+     * Cliente HTTP do serviço de PDF.
+     *
+     * A resiliência (retry/timeout/circuit-breaker/rate-limit) é aplicada de
+     * forma transparente pelo delegating handler Polly registrado em
+     * Program.cs via AddStandardResilienceHandler() — este provider desconhece
+     * o pipeline, mas se beneficia dele em produção.
+     *
+     * URL configurável via PDF_SERVICE_URL (env / appsettings), com fallback
+     * http://localhost:8889 em dev.
+     */
     public class PdfProvider : IPdfProvider
     {
         private readonly HttpClient _client;
@@ -23,6 +34,21 @@ namespace MageBackend.Infrastructure.Pdf
 
         public async Task<Stream> GeneratePdfAsync(string template, object data)
         {
+            var request = BuildRequest(template, data);
+            var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMsg = await ReadErrorBodyAsync(response);
+                response.Dispose();
+                throw new InvalidOperationException($"Erro ao gerar PDF no serviço: {errorMsg}");
+            }
+
+            return await response.Content.ReadAsStreamAsync();
+        }
+
+        internal HttpRequestMessage BuildRequest(string template, object data)
+        {
             var payload = new
             {
                 template,
@@ -31,21 +57,15 @@ namespace MageBackend.Infrastructure.Pdf
 
             var content = new StringContent(JsonSerializer.Serialize(payload, _jsonOptions), Encoding.UTF8, "application/json");
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_pdfServiceUrl}/v1/pdf/generate")
+            return new HttpRequestMessage(HttpMethod.Post, $"{_pdfServiceUrl}/v1/pdf/generate")
             {
                 Content = content
             };
+        }
 
-            var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                response.Dispose();
-                throw new InvalidOperationException($"Erro ao gerar PDF no serviço: {errorMsg}");
-            }
-
-            return await response.Content.ReadAsStreamAsync();
+        internal static async Task<string> ReadErrorBodyAsync(HttpResponseMessage response)
+        {
+            return await response.Content.ReadAsStringAsync();
         }
     }
 }
