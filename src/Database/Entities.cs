@@ -33,6 +33,7 @@ namespace MageBackend.Database
         public DateTime? RequestPasswordExpiration { get; set; }
         public int Retries { get; set; } = 0;
         public bool FirstAccess { get; set; } = true;
+        public int SessionVersion { get; set; } = 1;
     }
 
     [ExcludeFromCodeCoverage]

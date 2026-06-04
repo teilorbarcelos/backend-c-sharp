@@ -35,7 +35,7 @@ namespace MageBackend.Features.Role.Commands
                 .Select(u => u.Id)
                 .ToListAsync(cancellationToken);
 
-            await SessionManager.InvalidateManyUsersSessionsAsync(userIds);
+            await SessionManager.InvalidateManyUsersSessionsAsync(userIds, _context);
 
             return new DeleteRoleResult(true);
         }

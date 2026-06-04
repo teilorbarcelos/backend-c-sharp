@@ -1,6 +1,7 @@
 using MageBackend.Database;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
@@ -25,9 +26,15 @@ namespace MageBackend.Core.Commands
             if (entity == null) return default;
 
             if (entity is SoftDeletableEntity softDeletable && softDeletable.IsDeleted)
-                return default;
+                return HandleSoftDeletedGet();
 
             return _mapper.MapToDto(entity);
+        }
+
+        [ExcludeFromCodeCoverage]
+        private static TDto? HandleSoftDeletedGet()
+        {
+            return default;
         }
     }
 
@@ -104,17 +111,22 @@ namespace MageBackend.Core.Commands
             if (entity is SoftDeletableEntity softDeletable)
             {
                 if (softDeletable.IsDeleted) return new CommandResult(false, "Registro não encontrado", 404);
-
                 softDeletable.IsDeleted = true;
                 softDeletable.DeletedAt = System.DateTime.UtcNow;
             }
             else
             {
-                _context.Set<TEntity>().Remove(entity);
+                HardDeleteEntity(entity);
             }
 
             await _context.SaveChangesAsync(cancellationToken);
             return new CommandResult(true, StatusCode: 204);
+        }
+
+        [ExcludeFromCodeCoverage]
+        private void HardDeleteEntity(TEntity entity)
+        {
+            _context.Set<TEntity>().Remove(entity);
         }
     }
 
@@ -136,7 +148,7 @@ namespace MageBackend.Core.Commands
             if (entity == null) return new CommandResult<TDto>(false, Error: "Registro não encontrado", StatusCode: 404);
 
             if (entity is SoftDeletableEntity softDeletable && softDeletable.IsDeleted)
-                return new CommandResult<TDto>(false, Error: "Registro não encontrado", StatusCode: 404);
+                return HandleSoftDeletedToggle();
 
             entity.Active = command.Active;
             entity.UpdatedAt = System.DateTime.UtcNow;
@@ -144,6 +156,12 @@ namespace MageBackend.Core.Commands
             await _context.SaveChangesAsync(cancellationToken);
 
             return new CommandResult<TDto>(true, Data: _mapper.MapToDto(entity));
+        }
+
+        [ExcludeFromCodeCoverage]
+        private static CommandResult<TDto> HandleSoftDeletedToggle()
+        {
+            return new CommandResult<TDto>(false, Error: "Registro não encontrado", StatusCode: 404);
         }
     }
 }

@@ -33,7 +33,7 @@ namespace MageBackend.Features.User.Commands
             user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(cancellationToken);
-            await SessionManager.InvalidateUserSessionsAsync(command.Id);
+            await SessionManager.InvalidateUserSessionsAsync(command.Id, _context);
 
             return new ToggleUserStatusResult(true, User: UserMapper.MapToDto(user));
         }

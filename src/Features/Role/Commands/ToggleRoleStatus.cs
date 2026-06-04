@@ -33,7 +33,7 @@ namespace MageBackend.Features.Role.Commands
                 .Select(u => u.Id)
                 .ToListAsync(cancellationToken);
 
-            await SessionManager.InvalidateManyUsersSessionsAsync(userIds);
+            await SessionManager.InvalidateManyUsersSessionsAsync(userIds, _context);
 
             var roleFeatures = await _context.RoleFeature
                 .Where(rf => rf.IdRole == command.Id)

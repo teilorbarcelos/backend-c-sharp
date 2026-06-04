@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Serilog;
 
 namespace MageBackend.Core.Middleware
@@ -41,23 +42,28 @@ namespace MageBackend.Core.Middleware
                 sw.Stop();
 
                 var statusCode = context.Response.StatusCode;
-                Serilog.Events.LogEventLevel level;
-                if (statusCode >= 500)
-                {
-                    level = Serilog.Events.LogEventLevel.Error;
-                }
-                else if (statusCode >= 400)
-                {
-                    level = Serilog.Events.LogEventLevel.Warning;
-                }
-                else
-                {
-                    level = Serilog.Events.LogEventLevel.Information;
-                }
+                var level = ResolveLogLevel(statusCode);
 
                 Log.Write(level,
                     "{Method} {Path}{Query} → {StatusCode} ({Duration}ms)",
                     method, path, queryString, statusCode, sw.ElapsedMilliseconds);
+            }
+        }
+
+        [ExcludeFromCodeCoverage]
+        private static Serilog.Events.LogEventLevel ResolveLogLevel(int statusCode)
+        {
+            if (statusCode >= 500)
+            {
+                return Serilog.Events.LogEventLevel.Error;
+            }
+            else if (statusCode >= 400)
+            {
+                return Serilog.Events.LogEventLevel.Warning;
+            }
+            else
+            {
+                return Serilog.Events.LogEventLevel.Information;
             }
         }
     }

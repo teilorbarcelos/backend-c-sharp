@@ -53,7 +53,7 @@ namespace MageBackend.Features.User.Commands
             }
 
             await _context.SaveChangesAsync(cancellationToken);
-            await SessionManager.InvalidateUserSessionsAsync(command.Id);
+            await SessionManager.InvalidateUserSessionsAsync(command.Id, _context);
 
             return new DeleteUserResult(true);
         }

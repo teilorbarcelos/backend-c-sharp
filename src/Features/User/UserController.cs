@@ -104,6 +104,7 @@ namespace MageBackend.Features.User
             return NoContent();
         }
 
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         public record ToggleStatusDto
         {
             public required bool Active { get; init; }

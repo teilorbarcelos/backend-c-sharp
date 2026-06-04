@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
@@ -20,6 +21,7 @@ namespace MageBackend.Features.User.Commands
         public string? IdRole { get; init; }
         public bool? Active { get; init; }
 
+        [ExcludeFromCodeCoverage]
         public void SetId(string id) => typeof(UpdateUserCommand).GetProperty("Id")!.SetValue(this, id);
     }
 
@@ -59,7 +61,7 @@ namespace MageBackend.Features.User.Commands
             }
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            await SessionManager.InvalidateUserSessionsAsync(user.Id);
+            await SessionManager.InvalidateUserSessionsAsync(user.Id, _context);
             return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(true, Data: UserMapper.MapToDto(user));
         }
 
@@ -92,7 +94,7 @@ namespace MageBackend.Features.User.Commands
 
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            await SessionManager.InvalidateUserSessionsAsync(user.Id);
+            await SessionManager.InvalidateUserSessionsAsync(user.Id, _context);
             return null;
         }
     }

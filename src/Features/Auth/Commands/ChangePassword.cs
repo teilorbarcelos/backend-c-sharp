@@ -1,4 +1,5 @@
 using MageBackend.Database;
+using MageBackend.Infrastructure.Auth;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +47,7 @@ namespace MageBackend.Features.Auth.Commands
             user.Auth.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(cancellationToken);
+            await SessionManager.InvalidateUserSessionsAsync(user.Id, _context);
             return new ChangePasswordResult(true);
         }
     }
