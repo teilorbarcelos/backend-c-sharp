@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MediatR;
@@ -37,10 +36,29 @@ namespace MageBackend.Features.Auth.Commands
                 var refreshKey = $"session:user:{payload.Id}:refresh:{refreshTokenHash}";
                 var redisDb = RedisProvider.Database;
 
+                /*
+                 * Defesa primária: a chave de refresh específica desta sessão
+                 * precisa existir no Redis. Quando a sessão é invalidada
+                 * (SessionManager.InvalidateUserSessionsAsync), TODAS as chaves
+                 * session:user:{id}:refresh:* são deletadas.
+                 */
                 var isValid = await redisDb.KeyExistsAsync(refreshKey);
                 if (!isValid)
                 {
                     return new LoginResult(false, Error: "Sessão encerrada. Por favor, faça login novamente.", ErrorKey: ErrorUnauthorized, StatusCode: 401);
+                }
+
+                /*
+                 * Defesa em profundidade: além da chave existir, valida que o
+                 * sv claim do refresh token bate com a SessionVersion atual do
+                 * user. Cobre cenários hipotéticos em que a chave tenha
+                 * sobrevivido à invalidação (bug, race condition, refactor) —
+                 * mesmo padrão do TokenSessionValidationMiddleware para o JWT.
+                 */
+                var currentVersion = await SessionManager.GetCurrentVersionAsync(payload.Id, _context);
+                if (currentVersion == null || payload.SessionVersion != currentVersion.Value)
+                {
+                    return new LoginResult(false, Error: "Sessão inválida ou expirada. Faça login novamente.", ErrorKey: ErrorUnauthorized, StatusCode: 401);
                 }
 
                 var user = await _context.User
@@ -53,7 +71,7 @@ namespace MageBackend.Features.Auth.Commands
                     return new LoginResult(false, Error: ErrorUserDisabled, ErrorKey: ErrorUnauthorized, StatusCode: 401);
                 }
 
-                /* Delete the old refresh token session */
+                /* Delete the old refresh token session (rotation) */
                 await redisDb.KeyDeleteAsync(refreshKey);
 
                 var response = await AuthHelper.GenerateAuthResponse(user, _context, _jwtProvider);

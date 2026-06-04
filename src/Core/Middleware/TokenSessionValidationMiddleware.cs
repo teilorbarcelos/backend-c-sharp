@@ -1,19 +1,14 @@
 using Microsoft.AspNetCore.Http;
 using System;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using MageBackend.Infrastructure.Auth;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
 
 namespace MageBackend.Core.Middleware
 {
     public class TokenSessionValidationMiddleware
     {
         private readonly RequestDelegate _next;
-        private static readonly TimeSpan SessionVersionTtl = TimeSpan.FromDays(7);
 
         public TokenSessionValidationMiddleware(RequestDelegate next)
         {
@@ -53,7 +48,10 @@ namespace MageBackend.Core.Middleware
             }
 
             var tokenVersion = ParseTokenVersion(context.User.FindFirst("sv")?.Value);
-            var currentVersion = await GetCurrentVersionAsync(context, userId);
+
+            using var scope = context.RequestServices.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<MageBackend.Database.ApplicationDbContext>();
+            var currentVersion = await SessionManager.GetCurrentVersionAsync(userId, dbContext);
 
             if (currentVersion == null || tokenVersion != currentVersion.Value)
             {
@@ -68,39 +66,6 @@ namespace MageBackend.Core.Middleware
         {
             if (string.IsNullOrEmpty(svClaim)) return 1;
             return int.TryParse(svClaim, out var v) ? v : 1;
-        }
-
-        private static async Task<int?> GetCurrentVersionAsync(HttpContext context, string userId)
-        {
-            var sessionKey = $"session:user:{userId}:version";
-            var redisDb = RedisProvider.Database;
-            var redisValue = await redisDb.StringGetAsync(sessionKey);
-
-            if (redisValue.HasValue && int.TryParse(redisValue.ToString(), out var cached))
-            {
-                return cached;
-            }
-
-            return await HydrateFromDatabaseAsync(context, userId, redisDb, sessionKey);
-        }
-
-        private static async Task<int?> HydrateFromDatabaseAsync(
-            HttpContext context, string userId, IDatabase redisDb, string sessionKey)
-        {
-            using var scope = context.RequestServices.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<MageBackend.Database.ApplicationDbContext>();
-            var user = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
-                Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AsNoTracking(
-                    Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.Include(dbContext.User, u => u.Auth)
-                ),
-                u => u.Id == userId
-            );
-
-            if (user?.Auth == null) return null;
-
-            var version = user.Auth.SessionVersion;
-            await redisDb.StringSetAsync(sessionKey, version.ToString(), SessionVersionTtl);
-            return version;
         }
 
         private static async Task RejectAsync(HttpContext context)
