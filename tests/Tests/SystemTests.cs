@@ -135,7 +135,7 @@ namespace MageBackend.Tests
             await middleware.InvokeAsync(context);
 
             await Task.Delay(150);
-            Assert.True(true, "Middleware handled missing DB logging gracefully");
+            Assert.True(true, "Middleware handled missing queue gracefully");
         }
 
         [Fact]

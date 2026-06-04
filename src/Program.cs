@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MageBackend.Core;
+using MageBackend.Core.Auditing;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MageBackend.Core.Middleware;
@@ -65,6 +66,9 @@ try
 
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
     builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+
+    builder.Services.AddSingleton<IAuditLogQueue, AuditLogQueue>();
+    builder.Services.AddHostedService<AuditLogBackgroundService>();
     builder.Services.AddSingleton<MageBackend.Core.IEntityMapper<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>, MageBackend.Features.Product.ProductEntityMapper>();
     builder.Services.AddCrudHandlers<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>();
 
