@@ -16,7 +16,7 @@ STAGED_CS_FILES=$(git diff --cached --name-only --diff-filter=ACM -- 'src/**/*.c
 if [ -n "$STAGED_CS_FILES" ]; then
     for file in $STAGED_CS_FILES; do
         # Get only the staged content (what will be committed)
-        MATCHES=$(git show ":$file" 2>/dev/null | grep -n '[^:/]//\|^//' | grep -v '^\s*///' | grep -v '://' || true)
+        MATCHES=$(git show ":$file" 2>/dev/null | grep -n '[^:/]//\|^//' | grep -v '^[0-9]*:\s*///' | grep -v '://' || true)
         if [ -n "$MATCHES" ]; then
             COMMENT_ERRORS="${COMMENT_ERRORS}\n  ❌ ${file}:\n${MATCHES}\n"
         fi

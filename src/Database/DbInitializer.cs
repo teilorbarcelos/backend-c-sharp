@@ -14,7 +14,7 @@ namespace MageBackend.Database
             const string OperatorRoleId = "operator";
 
             /* Apply migrations automatically */
-            await context.Database.EnsureCreatedAsync();
+            await context.Database.MigrateAsync();
 
             /* 1. Seed Features */
             if (!await context.Feature.AnyAsync())

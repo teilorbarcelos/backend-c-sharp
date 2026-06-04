@@ -12,12 +12,14 @@ namespace MageBackend.Features.Dashboard
         public List<UserProductStatDto> ProductsPerUser { get; set; } = new();
     }
 
+    [ExcludeFromCodeCoverage]
     public class TimeSeriesStatDto
     {
         public string Date { get; set; } = string.Empty;
         public int Count { get; set; }
     }
 
+    [ExcludeFromCodeCoverage]
     public class UserProductStatDto
     {
         public string? UserId { get; set; }

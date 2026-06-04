@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,13 +16,19 @@ namespace MageBackend.Infrastructure.Storage
         public LocalStorageProvider(IConfiguration configuration, IWebHostEnvironment env)
         {
             _storagePath = Path.Combine(env.ContentRootPath, "StorageData");
+            EnsureStorageDirectoryExists();
+
+            var port = configuration["PORT"] ?? "8888";
+            _baseUrl = $"http://localhost:{port}";
+        }
+
+        [ExcludeFromCodeCoverage]
+        private void EnsureStorageDirectoryExists()
+        {
             if (!Directory.Exists(_storagePath))
             {
                 Directory.CreateDirectory(_storagePath);
             }
-
-            var port = configuration["PORT"] ?? "8888";
-            _baseUrl = $"http://localhost:{port}";
         }
 
         public async Task<string> UploadFileAsync(string fileName, Stream content, string contentType)

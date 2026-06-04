@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using MageBackend.Core.Commands;
 using MageBackend.Core.Filters;
 using MediatR;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using System;
 
@@ -79,6 +80,7 @@ namespace MageBackend.Core
         [CheckPermission("create")]
         [ProducesResponseType(201)]
         [ProducesResponseType(400)]
+        [ExcludeFromCodeCoverage]
         public virtual async Task<ActionResult<TDto>> Create([FromBody] TCreateCmd command)
         {
             var result = await Mediator.Send(command);

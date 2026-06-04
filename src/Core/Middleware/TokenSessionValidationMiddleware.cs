@@ -4,12 +4,16 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using MageBackend.Infrastructure.Auth;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace MageBackend.Core.Middleware
 {
     public class TokenSessionValidationMiddleware
     {
         private readonly RequestDelegate _next;
+        private static readonly TimeSpan SessionVersionTtl = TimeSpan.FromDays(7);
 
         public TokenSessionValidationMiddleware(RequestDelegate next)
         {
@@ -35,35 +39,75 @@ namespace MageBackend.Core.Middleware
                 return;
             }
 
-            if (context.User.Identity?.IsAuthenticated == true)
+            if (context.User.Identity?.IsAuthenticated != true)
             {
-                var token = context.Request.Headers.Authorization.FirstOrDefault()?.Split(" ")[^1];
-                if (token != null)
-                {
-                    var userId = context.User.FindFirst("id")?.Value;
+                await _next(context);
+                return;
+            }
 
-                    if (!string.IsNullOrEmpty(userId))
-                    {
-                        var tokenBytes = Encoding.UTF8.GetBytes(token);
-                        var hashBytes = SHA256.HashData(tokenBytes);
-                        var tokenHash = Convert.ToHexString(hashBytes).ToLower();
+            var userId = context.User.FindFirst("id")?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                await _next(context);
+                return;
+            }
 
-                        var sessionKey = $"session:user:{userId}:access:{tokenHash}";
-                        var redisDb = RedisProvider.Database;
+            var tokenVersion = ParseTokenVersion(context.User.FindFirst("sv")?.Value);
+            var currentVersion = await GetCurrentVersionAsync(context, userId);
 
-                        var sessionExists = await redisDb.KeyExistsAsync(sessionKey);
-                        if (!sessionExists)
-                        {
-                            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsync("{\"error\": \"UnauthorizedError\", \"message\": \"Sessão inválida ou expirada. Faça login novamente.\"}");
-                            return;
-                        }
-                    }
-                }
+            if (currentVersion == null || tokenVersion != currentVersion.Value)
+            {
+                await RejectAsync(context);
+                return;
             }
 
             await _next(context);
+        }
+
+        private static int ParseTokenVersion(string? svClaim)
+        {
+            if (string.IsNullOrEmpty(svClaim)) return 1;
+            return int.TryParse(svClaim, out var v) ? v : 1;
+        }
+
+        private static async Task<int?> GetCurrentVersionAsync(HttpContext context, string userId)
+        {
+            var sessionKey = $"session:user:{userId}:version";
+            var redisDb = RedisProvider.Database;
+            var redisValue = await redisDb.StringGetAsync(sessionKey);
+
+            if (redisValue.HasValue && int.TryParse(redisValue.ToString(), out var cached))
+            {
+                return cached;
+            }
+
+            return await HydrateFromDatabaseAsync(context, userId, redisDb, sessionKey);
+        }
+
+        private static async Task<int?> HydrateFromDatabaseAsync(
+            HttpContext context, string userId, IDatabase redisDb, string sessionKey)
+        {
+            using var scope = context.RequestServices.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<MageBackend.Database.ApplicationDbContext>();
+            var user = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
+                Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AsNoTracking(
+                    Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.Include(dbContext.User, u => u.Auth)
+                ),
+                u => u.Id == userId
+            );
+
+            if (user?.Auth == null) return null;
+
+            var version = user.Auth.SessionVersion;
+            await redisDb.StringSetAsync(sessionKey, version.ToString(), SessionVersionTtl);
+            return version;
+        }
+
+        private static async Task RejectAsync(HttpContext context)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync("{\"error\": \"UnauthorizedError\", \"message\": \"Sessão inválida ou expirada. Faça login novamente.\"}");
         }
     }
 }

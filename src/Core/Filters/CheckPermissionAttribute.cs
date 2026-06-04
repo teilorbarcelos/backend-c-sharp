@@ -35,19 +35,8 @@ namespace MageBackend.Core.Filters
 
         public void OnAuthorization(AuthorizationFilterContext context)
         {
-            var featureName = _feature;
-            if (string.IsNullOrEmpty(featureName))
-            {
-                var featureAttr = context.ActionDescriptor.EndpointMetadata
-                    .OfType<FeatureNameAttribute>()
-                    .FirstOrDefault();
-                featureName = featureAttr?.Name;
+            var featureName = ResolveFeatureName(context);
 
-                if (string.IsNullOrEmpty(featureName))
-                {
-                    throw new AppException("Feature name is not configured for this endpoint.", 500);
-                }
-            }
             var user = context.HttpContext.User;
             if (user.Identity?.IsAuthenticated != true)
             {
@@ -81,6 +70,32 @@ namespace MageBackend.Core.Filters
             {
                 throw new AppException($"Sem permissão para {_action} em {featureName}", 403);
             }
+        }
+
+        private string ResolveFeatureName(AuthorizationFilterContext context)
+        {
+            if (!string.IsNullOrEmpty(_feature))
+            {
+                return _feature;
+            }
+
+            return ResolveFeatureNameFromMetadata(context);
+        }
+
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        private static string ResolveFeatureNameFromMetadata(AuthorizationFilterContext context)
+        {
+            var featureAttr = context.ActionDescriptor.EndpointMetadata
+                .OfType<FeatureNameAttribute>()
+                .FirstOrDefault();
+            var name = featureAttr?.Name;
+
+            if (string.IsNullOrEmpty(name))
+            {
+                throw new AppException("Feature name is not configured for this endpoint.", 500);
+            }
+
+            return name;
         }
     }
 

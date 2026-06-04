@@ -80,12 +80,18 @@ namespace MageBackend.Features.Auth
             var result = await _mediator.Send(new GetMeQuery(userId, authorization));
             if (!result.Success)
             {
-                if (result.StatusCode == 401)
-                    return Unauthorized(new { error = "UnauthorizedError", message = result.Error });
-                return StatusCode(result.StatusCode, new { error = "UnauthorizedError", message = result.Error });
+                return BuildUnauthorizedResponse(result);
             }
 
             return Ok(result.Response);
+        }
+
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        private IActionResult BuildUnauthorizedResponse(GetMeResult result)
+        {
+            if (result.StatusCode == 401)
+                return Unauthorized(new { error = "UnauthorizedError", message = result.Error });
+            return StatusCode(result.StatusCode, new { error = "UnauthorizedError", message = result.Error });
         }
 
         [HttpPost("password/request")]

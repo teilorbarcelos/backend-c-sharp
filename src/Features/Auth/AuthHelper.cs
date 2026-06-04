@@ -27,14 +27,11 @@ namespace MageBackend.Features.Auth
                 Id = user.Id,
                 Email = user.Email,
                 RoleId = user.IdRole,
-                Permissions = permissions
+                Permissions = permissions,
+                SessionVersion = user.Auth?.SessionVersion ?? 1
             };
 
             var tokens = jwtProvider.GenerateTokenPair(payload);
-
-            var tokenBytes = Encoding.UTF8.GetBytes(tokens.Token);
-            var tokenHashBytes = SHA256.HashData(tokenBytes);
-            var tokenHash = Convert.ToHexString(tokenHashBytes).ToLower();
 
             var refreshBytes = Encoding.UTF8.GetBytes(tokens.RefreshToken);
             var refreshHashBytes = SHA256.HashData(refreshBytes);
@@ -42,9 +39,9 @@ namespace MageBackend.Features.Auth
 
             var redisDb = RedisProvider.Database;
 
-            /* session:user:{id}:access:{tokenHash} -> payload (24h) */
+            /* session:user:{id}:version -> "version" (7d) */
             /* session:user:{id}:refresh:{refreshTokenHash} -> "1" (7d) */
-            await redisDb.StringSetAsync($"session:user:{user.Id}:access:{tokenHash}", JsonSerializer.Serialize(payload), TimeSpan.FromDays(1));
+            await redisDb.StringSetAsync($"session:user:{user.Id}:version", payload.SessionVersion.ToString(), TimeSpan.FromDays(7));
             await redisDb.StringSetAsync($"session:user:{user.Id}:refresh:{refreshTokenHash}", "1", TimeSpan.FromDays(7));
 
             return new AuthResponseDto

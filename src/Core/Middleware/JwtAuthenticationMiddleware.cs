@@ -30,7 +30,8 @@ namespace MageBackend.Core.Middleware
                             new Claim("id", payload.Id),
                             new Claim("email", payload.Email),
                             new Claim("roleId", payload.RoleId),
-                            new Claim("permissions", System.Text.Json.JsonSerializer.Serialize(payload.Permissions))
+                            new Claim("permissions", System.Text.Json.JsonSerializer.Serialize(payload.Permissions)),
+                            new Claim("sv", payload.SessionVersion.ToString())
                         };
                         var identity = new ClaimsIdentity(claims, "jwt");
                         context.User = new ClaimsPrincipal(identity);

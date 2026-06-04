@@ -40,3 +40,4 @@ src/StorageData/*
 .sonarqube
 tests/coverage.opencover.xml
 run-sonar.sh
+TODO.md
