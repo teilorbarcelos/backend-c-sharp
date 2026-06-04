@@ -85,9 +85,11 @@ try
 
     builder.Services.AddCors(options =>
     {
-        options.AddPolicy("AllowAll", policy =>
+        var allowedOrigins = CorsConfig.GetAllowedOrigins(builder.Environment.EnvironmentName);
+
+        options.AddPolicy("Default", policy =>
         {
-            policy.SetIsOriginAllowed(origin => true)
+            policy.WithOrigins(allowedOrigins.ToArray())
                   .AllowAnyMethod()
                   .AllowAnyHeader()
                   .AllowCredentials();
@@ -120,7 +122,7 @@ try
 
     app.UseMiddleware<ErrorHandlerMiddleware>();
 
-    app.UseCors("AllowAll");
+    app.UseCors("Default");
 
     app.UseMiddleware<RequestLoggingMiddleware>();
 
