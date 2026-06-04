@@ -1,6 +1,7 @@
 using MageBackend.Database;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MageBackend.Features.Auth.Commands
 {
@@ -10,6 +11,17 @@ namespace MageBackend.Features.Auth.Commands
 
     public class ValidateResetTokenHandler : IRequestHandler<ValidateResetTokenCommand, ValidateResetTokenResult>
     {
+        /*
+         * Resposta única para qualquer falha de validação de reset token: user
+         * não existe, token inválido, token expirado. Mesmo status (401) e
+         * mesma mensagem.
+         *
+         * O motivo real continua sendo logado internamente para o SOC detectar
+         * tentativas de enumeração (e.g., spike de "user_not_found" para um
+         * domínio específico).
+         */
+        private const string ErrorInvalidToken = "Invalid or expired reset token";
+
         private readonly ApplicationDbContext _context;
 
         public ValidateResetTokenHandler(ApplicationDbContext context)
@@ -25,17 +37,20 @@ namespace MageBackend.Features.Auth.Commands
 
             if (user == null || user.Auth == null)
             {
-                return new ValidateResetTokenResult(false, Error: "User not found", StatusCode: 404);
+                Log.Warning("[Auth] Reset token validation failed for {Email} (reason: {Reason})", command.Email, "user_not_found");
+                return new ValidateResetTokenResult(false, Error: ErrorInvalidToken, StatusCode: 401);
             }
 
             if (user.Auth.RequestPasswordToken != command.Token)
             {
-                return new ValidateResetTokenResult(false, Error: "Invalid reset token", StatusCode: 401);
+                Log.Warning("[Auth] Reset token validation failed for {Email} (reason: {Reason})", command.Email, "token_mismatch");
+                return new ValidateResetTokenResult(false, Error: ErrorInvalidToken, StatusCode: 401);
             }
 
             if (user.Auth.RequestPasswordExpiration.HasValue && user.Auth.RequestPasswordExpiration < DateTime.UtcNow)
             {
-                return new ValidateResetTokenResult(false, Error: "Reset token has expired", StatusCode: 401);
+                Log.Warning("[Auth] Reset token validation failed for {Email} (reason: {Reason})", command.Email, "token_expired");
+                return new ValidateResetTokenResult(false, Error: ErrorInvalidToken, StatusCode: 401);
             }
 
             return new ValidateResetTokenResult(true);
