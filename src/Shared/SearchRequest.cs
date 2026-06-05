@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace MageBackend.Core
+namespace MageBackend.Shared
 {
     public class SearchRequest
     {

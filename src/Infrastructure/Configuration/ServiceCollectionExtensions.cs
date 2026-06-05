@@ -1,5 +1,6 @@
-using MageBackend.Core;
 using MageBackend.Core.Commands;
+using MageBackend.Domain;
+using MageBackend.Shared;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 

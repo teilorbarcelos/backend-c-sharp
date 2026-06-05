@@ -1,4 +1,4 @@
-namespace MageBackend.Core
+namespace MageBackend.Domain
 {
     public interface IEntityMapper<in TEntity, out TDto>
     {

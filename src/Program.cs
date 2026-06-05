@@ -71,10 +71,10 @@ try
 
     builder.Services.AddSingleton<IAuditLogQueue, AuditLogQueue>();
     builder.Services.AddHostedService<AuditLogBackgroundService>();
-    builder.Services.AddSingleton<MageBackend.Core.IEntityMapper<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>, MageBackend.Features.Product.ProductEntityMapper>();
+    builder.Services.AddSingleton<MageBackend.Domain.IEntityMapper<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>, MageBackend.Features.Product.ProductEntityMapper>();
     builder.Services.AddCrudHandlers<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>();
 
-    builder.Services.AddSingleton<MageBackend.Core.IEntityMapper<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>, MageBackend.Features.User.UserEntityMapper>();
+    builder.Services.AddSingleton<MageBackend.Domain.IEntityMapper<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>, MageBackend.Features.User.UserEntityMapper>();
     builder.Services.AddCrudHandlers<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>();
 
     builder.Services.AddControllers()

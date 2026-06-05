@@ -1,3 +1,5 @@
+using MageBackend.Domain;
+using MageBackend.Shared;
 using MediatR;
 
 namespace MageBackend.Core.Commands

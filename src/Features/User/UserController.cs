@@ -4,6 +4,7 @@ using MageBackend.Core.Filters;
 using MageBackend.Features.User.Commands;
 using MageBackend.Features.User.Queries;
 using MageBackend.Infrastructure.Auth;
+using MageBackend.Shared;
 using MediatR;
 using FluentValidation;
 

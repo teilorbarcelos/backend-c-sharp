@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MageBackend.Core
+namespace MageBackend.Domain
 {
     public abstract class BaseEntity
     {

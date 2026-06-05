@@ -1,4 +1,5 @@
 using MageBackend.Database;
+using MageBackend.Domain;
 using MageBackend.Shared;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
