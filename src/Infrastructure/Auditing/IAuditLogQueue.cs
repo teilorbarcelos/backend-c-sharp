@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace MageBackend.Core.Auditing
+namespace MageBackend.Infrastructure.Auditing
 {
     /*
      * Fila singleton de logs de auditoria com backpressure.

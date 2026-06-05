@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
-namespace MageBackend.Core.Auditing
+namespace MageBackend.Infrastructure.Auditing
 {
     /*
      * BackgroundService que consome AuditLogEntry da fila e grava em batch

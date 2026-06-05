@@ -6,7 +6,7 @@ using Serilog;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using MageBackend.Core.Auditing;
+using MageBackend.Infrastructure.Auditing;
 
 namespace MageBackend.Core.Middleware
 {

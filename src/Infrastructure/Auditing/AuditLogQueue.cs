@@ -4,7 +4,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Serilog;
 
-namespace MageBackend.Core.Auditing
+namespace MageBackend.Infrastructure.Auditing
 {
     /*
      * Implementação singleton de IAuditLogQueue baseada em System.Threading.Channels.

@@ -8,7 +8,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using MageBackend.Core.Auditing;
+using MageBackend.Infrastructure.Auditing;
 using MageBackend.Core.Middleware;
 using MageBackend.Database;
 using Microsoft.AspNetCore.Http;

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MageBackend.Core;
-using MageBackend.Core.Auditing;
+using MageBackend.Infrastructure.Auditing;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MageBackend.Core.Middleware;

@@ -1,6 +1,6 @@
 using System;
 
-namespace MageBackend.Core.Auditing
+namespace MageBackend.Infrastructure.Auditing
 {
     /*
      * Snapshot imutável do contexto HTTP capturado pelo AuditLogMiddleware.
