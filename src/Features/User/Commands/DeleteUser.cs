@@ -20,7 +20,7 @@ namespace MageBackend.Features.User.Commands
 
         public async Task<DeleteUserResult> Handle(DeleteUserCommand command, CancellationToken cancellationToken)
         {
-            var user = await _context.User.FirstOrDefaultAsync(u => u.Id == command.Id && !u.IsDeleted, cancellationToken);
+            var user = await _context.User.AsTracking().FirstOrDefaultAsync(u => u.Id == command.Id && !u.IsDeleted, cancellationToken);
             if (user == null) return new DeleteUserResult(false, Error: "User not found", StatusCode: 404);
 
             var adminEmail = Environment.GetEnvironmentVariable("FIRST_USER") ?? "admin@email.com";
@@ -42,7 +42,7 @@ namespace MageBackend.Features.User.Commands
 
             if (!string.IsNullOrEmpty(user.IdAuth))
             {
-                var auth = await _context.Auth.FindAsync(new object[] { user.IdAuth }, cancellationToken);
+                var auth = await _context.Auth.AsTracking().FirstOrDefaultAsync(a => a.Id == user.IdAuth, cancellationToken);
                 if (auth != null)
                 {
                     auth.IsDeleted = true;

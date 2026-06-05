@@ -76,7 +76,7 @@ namespace MageBackend.Features.Feature.Commands
 
         public async Task<UpdateFeatureResult> Handle(UpdateFeatureCommand command, CancellationToken cancellationToken)
         {
-            var feature = await _context.Feature.FindAsync(new object[] { command.Id }, cancellationToken);
+            var feature = await _context.Feature.AsTracking().FirstOrDefaultAsync(f => f.Id == command.Id, cancellationToken);
             if (feature == null) return new UpdateFeatureResult(false, Error: "Feature not found", StatusCode: 404);
 
             feature.Name = command.Name;
@@ -111,7 +111,7 @@ namespace MageBackend.Features.Feature.Commands
 
         public async Task<DeleteFeatureResult> Handle(DeleteFeatureCommand command, CancellationToken cancellationToken)
         {
-            var feature = await _context.Feature.FindAsync(new object[] { command.Id }, cancellationToken);
+            var feature = await _context.Feature.AsTracking().FirstOrDefaultAsync(f => f.Id == command.Id, cancellationToken);
             if (feature == null) return new DeleteFeatureResult(false, Error: "Feature not found", StatusCode: 404);
 
             _context.Feature.Remove(feature);
@@ -136,7 +136,7 @@ namespace MageBackend.Features.Feature.Commands
 
         public async Task<ToggleFeatureStatusResult> Handle(ToggleFeatureStatusCommand command, CancellationToken cancellationToken)
         {
-            var feature = await _context.Feature.FindAsync(new object[] { command.Id }, cancellationToken);
+            var feature = await _context.Feature.AsTracking().FirstOrDefaultAsync(f => f.Id == command.Id, cancellationToken);
             if (feature == null) return new ToggleFeatureStatusResult(false, Error: "Feature not found", StatusCode: 404);
 
             feature.Active = command.Active;

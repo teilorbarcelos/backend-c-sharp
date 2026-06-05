@@ -21,6 +21,7 @@ namespace MageBackend.Features.Auth.Commands
         {
             var user = await _context.User
                 .Include(u => u.Auth)
+                .AsTracking()
                 .FirstOrDefaultAsync(u => u.Email == command.Email && !u.IsDeleted, cancellationToken);
 
             if (user != null && user.Auth != null)

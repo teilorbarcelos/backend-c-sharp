@@ -132,10 +132,14 @@ namespace MageBackend.Tests
             using (var scope = _fixture.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var user = await dbContext.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Id == userId);
+                var user = await dbContext.User.Include(u => u.Auth).AsTracking().FirstOrDefaultAsync(u => u.Id == userId);
                 idAuth = user!.IdAuth!;
-                // Hard-delete the Auth row
-                var auth = await dbContext.Auth.FindAsync(idAuth);
+                /* Nullifica o IdAuth do User antes de deletar o Auth —
+                 * sem isso, a FK constraint bloqueia o DELETE do Auth. */
+                user.IdAuth = null;
+                await dbContext.SaveChangesAsync();
+
+                var auth = await dbContext.Auth.AsTracking().FirstOrDefaultAsync(a => a.Id == idAuth);
                 dbContext.Auth.Remove(auth!);
                 await dbContext.SaveChangesAsync();
             }

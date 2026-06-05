@@ -109,7 +109,7 @@ namespace MageBackend.Tests
             using (var scope = _fixture.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var user = await dbContext.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Email == "admin@email.com");
+                var user = await dbContext.User.Include(u => u.Auth).AsTracking().FirstOrDefaultAsync(u => u.Email == "admin@email.com");
                 Assert.NotNull(user);
                 Assert.NotNull(user.Auth);
                 token = user.Auth.RequestPasswordToken ?? "";

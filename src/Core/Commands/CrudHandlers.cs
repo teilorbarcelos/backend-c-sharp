@@ -104,7 +104,7 @@ namespace MageBackend.Core.Commands
 
         public async Task<CommandResult> Handle(DeleteCommand<TEntity> command, CancellationToken cancellationToken)
         {
-            var entity = await _context.Set<TEntity>().FirstOrDefaultAsync(e => e.Id == command.Id, cancellationToken);
+            var entity = await _context.Set<TEntity>().AsTracking().FirstOrDefaultAsync(e => e.Id == command.Id, cancellationToken);
 
             if (entity == null) return new CommandResult(false, "Registro não encontrado", 404);
 

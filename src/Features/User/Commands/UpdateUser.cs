@@ -36,7 +36,7 @@ namespace MageBackend.Features.User.Commands
 
         public async Task<MageBackend.Core.Commands.CommandResult<UserResponseDto>> Handle(UpdateUserCommand command, CancellationToken cancellationToken)
         {
-            var user = await _context.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Id == command.Id && !u.IsDeleted, cancellationToken);
+            var user = await _context.User.Include(u => u.Auth).AsTracking().FirstOrDefaultAsync(u => u.Id == command.Id && !u.IsDeleted, cancellationToken);
             if (user == null) return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(false, Error: "User not found", StatusCode: 404);
 
             var adminEmail = Environment.GetEnvironmentVariable("FIRST_USER") ?? "admin@email.com";
