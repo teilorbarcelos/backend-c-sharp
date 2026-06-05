@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
-namespace MageBackend.Core
+namespace MageBackend.Shared
 {
     [ExcludeFromCodeCoverage]
     public static class DateTimeHelper

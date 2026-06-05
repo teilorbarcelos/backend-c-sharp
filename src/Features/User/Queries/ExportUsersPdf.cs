@@ -1,4 +1,5 @@
 using MageBackend.Core;
+using MageBackend.Shared;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Pdf;
 using MediatR;

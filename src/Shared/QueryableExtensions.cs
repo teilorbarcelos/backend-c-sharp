@@ -7,7 +7,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
-namespace MageBackend.Core
+using MageBackend.Core;
+
+namespace MageBackend.Shared
 {
     public static class QueryableExtensions
     {
