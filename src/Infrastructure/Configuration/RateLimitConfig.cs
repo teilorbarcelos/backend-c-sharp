@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace MageBackend.Core
+namespace MageBackend.Infrastructure.Configuration
 {
     /*
      * Configuração centralizada de rate limiting por endpoint.

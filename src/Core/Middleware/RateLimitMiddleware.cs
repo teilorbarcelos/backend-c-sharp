@@ -1,5 +1,5 @@
-using MageBackend.Core;
 using MageBackend.Infrastructure.Auth;
+using MageBackend.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Http;
 using Serilog;
 using StackExchange.Redis;

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using MageBackend.Core;
 using MageBackend.Infrastructure.Auditing;
+using MageBackend.Infrastructure.Configuration;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MageBackend.Core.Middleware;

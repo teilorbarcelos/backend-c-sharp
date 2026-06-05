@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace MageBackend.Core
+namespace MageBackend.Infrastructure.Configuration
 {
     /*
      * Wrapper defensivo para leitura obrigatória de variáveis de ambiente.

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MageBackend.Core
+namespace MageBackend.Infrastructure.Configuration
 {
     /*
      * Configuração parametrizável da política CORS.

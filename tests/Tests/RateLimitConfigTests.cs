@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using MageBackend.Core;
+using MageBackend.Infrastructure.Configuration;
 using Xunit;
 
 namespace MageBackend.Tests
