@@ -186,6 +186,13 @@ try
         await DbInitializer.InitializeAsync(dbContext);
     }
 
+    var migrateOnly = Environment.GetEnvironmentVariable("MIGRATE_ONLY") is string m && (m.Equals("true", StringComparison.OrdinalIgnoreCase) || m == "1");
+    if (migrateOnly)
+    {
+        Log.Information("MIGRATE_ONLY=true — migrations applied, exiting.");
+        return;
+    }
+
     var rabbitProvider = app.Services.GetRequiredService<RabbitMQProvider>();
     rabbitProvider.Connect();
 
