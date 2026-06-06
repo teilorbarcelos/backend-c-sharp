@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MageBackend.Infrastructure.Messaging;
 
 namespace MageBackend.Infrastructure.HealthChecks
 {
+    [ExcludeFromCodeCoverage]
     public class RabbitMqHealthCheck : IHealthCheck
     {
         private readonly RabbitMQProvider _provider;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using RabbitMQ.Client;
@@ -14,6 +15,8 @@ namespace MageBackend.Infrastructure.Messaging
         private readonly bool _enabled;
         private readonly string _rabbitUrl;
         private static readonly string DefaultRabbitUrl = new UriBuilder("amqp", "localhost").ToString();
+
+        public bool IsConnected => _channel is not null && _channel.IsOpen;
 
         public RabbitMQProvider()
         {
@@ -38,7 +41,16 @@ namespace MageBackend.Infrastructure.Messaging
 
                 _connection = factory.CreateConnection();
                 _channel = _connection.CreateModel();
-                Log.Information("[RabbitMQ] Connected successfully");
+
+                var prefetchCount = RabbitMQConfig.GetPrefetchCount();
+                _channel.BasicQos(prefetchSize: 0, prefetchCount: (ushort)prefetchCount, global: false);
+                Log.Information("[RabbitMQ] Connected successfully (prefetchCount={Prefetch})", prefetchCount);
+
+                if (RabbitMQConfig.IsPublisherConfirmsEnabled())
+                {
+                    _channel.ConfirmSelect();
+                    Log.Information("[RabbitMQ] Publisher confirms enabled");
+                }
             }
             catch (Exception ex)
             {
@@ -47,7 +59,38 @@ namespace MageBackend.Infrastructure.Messaging
             }
         }
 
-        public void Publish<T>(string queue, T message)
+        public void DeclareDeadLetterInfrastructure(string queueName)
+        {
+            if (_channel == null)
+            {
+                if (_enabled)
+                    throw new InvalidOperationException("RabbitMQ channel not initialized");
+                return;
+            }
+
+            var dlxName = queueName + RabbitMQConfig.DeadLetterExchangeSuffix;
+            var dlqName = queueName + RabbitMQConfig.DeadLetterQueueSuffix;
+            var retryExchangeName = queueName + RabbitMQConfig.RetryExchangeSuffix;
+            var retryQueueName = queueName + RabbitMQConfig.RetryQueueSuffix;
+
+            _channel.ExchangeDeclare(dlxName, ExchangeType.Fanout, durable: true);
+            _channel.QueueDeclare(dlqName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+            _channel.QueueBind(dlqName, dlxName, routingKey: "");
+
+            var retryArgs = new Dictionary<string, object?>
+            {
+                { "x-dead-letter-exchange", "" },
+                { "x-dead-letter-routing-key", queueName },
+                { "x-message-ttl", 5000 }
+            };
+            _channel.ExchangeDeclare(retryExchangeName, ExchangeType.Fanout, durable: true);
+            _channel.QueueDeclare(retryQueueName, durable: true, exclusive: false, autoDelete: false, arguments: retryArgs);
+            _channel.QueueBind(retryQueueName, retryExchangeName, routingKey: "");
+
+            Log.Information("[RabbitMQ] DLX/DLQ infrastructure declared for queue '{Queue}'", queueName);
+        }
+
+        public void Publish<T>(string queue, T message, bool addVersionHeader = true)
         {
             if (_channel == null)
             {
@@ -59,13 +102,7 @@ namespace MageBackend.Infrastructure.Messaging
                 return;
             }
 
-            _channel.QueueDeclare(
-                queue: queue,
-                durable: true,
-                exclusive: false,
-                autoDelete: false,
-                arguments: null
-            );
+            DeclareQueue(queue);
 
             var json = JsonSerializer.Serialize(message);
             var body = Encoding.UTF8.GetBytes(json);
@@ -73,12 +110,23 @@ namespace MageBackend.Infrastructure.Messaging
             var properties = _channel.CreateBasicProperties();
             properties.Persistent = true;
 
+            if (addVersionHeader)
+            {
+                properties.Headers ??= new Dictionary<string, object?>();
+                properties.Headers["x-message-version"] = RabbitMQConfig.DefaultMessageVersion;
+            }
+
             _channel.BasicPublish(
                 exchange: string.Empty,
                 routingKey: queue,
                 basicProperties: properties,
                 body: body
             );
+
+            if (RabbitMQConfig.IsPublisherConfirmsEnabled())
+            {
+                _channel.WaitForConfirmsOrDie(TimeSpan.FromSeconds(5));
+            }
         }
 
         public void Subscribe<T>(string queue, Action<T> callback) where T : class
@@ -93,13 +141,7 @@ namespace MageBackend.Infrastructure.Messaging
                 return;
             }
 
-            _channel.QueueDeclare(
-                queue: queue,
-                durable: true,
-                exclusive: false,
-                autoDelete: false,
-                arguments: null
-            );
+            DeclareQueue(queue);
 
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += (model, ea) => HandleMessageReceived(ea, callback);
@@ -111,11 +153,25 @@ namespace MageBackend.Infrastructure.Messaging
             );
         }
 
-        private void HandleMessageReceived<T>(RabbitMQ.Client.Events.BasicDeliverEventArgs ea, Action<T> callback) where T : class
+        private void DeclareQueue(string queue)
+        {
+            if (_channel == null) return;
+
+            _channel.QueueDeclare(
+                queue: queue,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null
+            );
+        }
+
+        private void HandleMessageReceived<T>(BasicDeliverEventArgs ea, Action<T> callback) where T : class
         {
             var body = ea.Body.ToArray();
             if (body == null || body.Length == 0)
             {
+                _channel?.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
                 return;
             }
 
@@ -129,10 +185,15 @@ namespace MageBackend.Infrastructure.Messaging
                     callback(message);
                     _channel?.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
                 }
+                else
+                {
+                    _channel?.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: false);
+                }
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "[RabbitMQ] Error handling message: {Message}", ex.Message);
+                _channel?.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: false);
             }
         }
 

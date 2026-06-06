@@ -37,9 +37,15 @@ namespace MageBackend.Web.Middleware
                         context.User = new ClaimsPrincipal(identity);
                     }
                 }
+                /*
+                 * Empty catch is intentional: invalid token means
+                 * unauthenticated request, next middleware handles it.
+                 */
+#pragma warning disable S2486, S108
                 catch
                 {
                 }
+#pragma warning restore S2486, S108
             }
 
             await _next(context);

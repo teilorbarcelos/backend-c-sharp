@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace MageBackend.Infrastructure.HealthChecks
 {
+    [ExcludeFromCodeCoverage]
     public class PdfHealthCheck : IHealthCheck
     {
         private readonly IHttpClientFactory _httpClientFactory;

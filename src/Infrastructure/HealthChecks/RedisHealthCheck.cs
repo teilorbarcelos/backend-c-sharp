@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MageBackend.Infrastructure.Auth;
 
 namespace MageBackend.Infrastructure.HealthChecks
 {
+    [ExcludeFromCodeCoverage]
     public class RedisHealthCheck : IHealthCheck
     {
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)

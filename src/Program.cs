@@ -40,7 +40,8 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    if (builder.Environment.EnvironmentName != "Testing")
+    const string testingEnv = "Testing";
+    if (builder.Environment.EnvironmentName != testingEnv)
     {
         DotNetRuntimeStatsBuilder.Default().StartCollecting();
     }
@@ -65,7 +66,13 @@ try
     var rabbitUrl = EnvValidator.Required("RABBIT_URL");
     Environment.SetEnvironmentVariable("RABBIT_URL", rabbitUrl);
     builder.Services.AddSingleton<RabbitMQProvider>();
-    builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
+    builder.Services.AddSingleton(sp =>
+    {
+        var provider = sp.GetRequiredService<RabbitMQProvider>();
+        var queue = Environment.GetEnvironmentVariable("RABBIT_CONSUMER_QUEUE") ?? "";
+        return new RabbitMQConsumerService(provider, queue);
+    });
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitMQConsumerService>());
     builder.Services.AddHttpClient<IPdfProvider, PdfProvider>()
         .AddStandardResilienceHandler(PdfResilienceConfig.Configure);
 
@@ -116,7 +123,7 @@ try
             });
     }
 
-    if (builder.Environment.EnvironmentName != "Testing")
+    if (builder.Environment.EnvironmentName != testingEnv)
     {
         builder.Services.AddAppHealthChecks();
     }
@@ -135,7 +142,7 @@ try
 
     var app = builder.Build();
 
-    if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Testing")
+    if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == testingEnv)
     {
         app.MapOpenApi();
         app.UseSwaggerUI(options =>
@@ -166,7 +173,7 @@ try
 
     app.MapGet("/health", async (HttpContext http) =>
     {
-        if (app.Environment.EnvironmentName == "Testing")
+        if (app.Environment.EnvironmentName == testingEnv)
             return Results.Ok(new { status = "UP", timestamp = DateTime.UtcNow.ToString("o") });
 
         return await HealthCheckConfig.RunHealthChecksAsync(http);

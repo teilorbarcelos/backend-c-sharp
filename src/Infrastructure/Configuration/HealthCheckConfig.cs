@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Net.Mime;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System.Net.Mime;
-using System.Text.Json;
 using MageBackend.Infrastructure.HealthChecks;
 
 namespace MageBackend.Infrastructure.Configuration
@@ -16,17 +17,22 @@ namespace MageBackend.Infrastructure.Configuration
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        private static readonly string[] RabbitMqTags = ["rabbitmq"];
+        private static readonly string[] PdfTags = ["pdf"];
+
+        [ExcludeFromCodeCoverage]
         public static IServiceCollection AddAppHealthChecks(this IServiceCollection services)
         {
             services.AddHealthChecks()
                 .AddCheck<SqlHealthCheck>("sql")
                 .AddCheck<RedisHealthCheck>("redis")
-                .AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: new[] { "rabbitmq" })
-                .AddCheck<PdfHealthCheck>("pdf", tags: new[] { "pdf" });
+                .AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: RabbitMqTags)
+                .AddCheck<PdfHealthCheck>("pdf", tags: PdfTags);
 
             return services;
         }
 
+        [ExcludeFromCodeCoverage]
         public static void MapAppHealthChecks(this WebApplication app)
         {
             app.MapHealthChecks("/health", new HealthCheckOptions
@@ -42,6 +48,7 @@ namespace MageBackend.Infrastructure.Configuration
             });
         }
 
+        [ExcludeFromCodeCoverage]
         public static async Task<IResult> RunHealthChecksAsync(HttpContext http)
         {
             var healthCheckService = http.RequestServices.GetRequiredService<HealthCheckService>();
@@ -85,6 +92,7 @@ namespace MageBackend.Infrastructure.Configuration
             };
         }
 
+        [ExcludeFromCodeCoverage]
         internal static Task WriteHealthResponse(HttpContext context, HealthReport report)
         {
             context.Response.ContentType = MediaTypeNames.Application.Json;

@@ -17,7 +17,7 @@ namespace MageBackend.Infrastructure.Configuration
             var raw = Environment.GetEnvironmentVariable(OtelEnabledEnvVar);
             if (string.IsNullOrEmpty(raw)) return true;
 
-            return bool.TryParse(raw, out var val) ? val : true;
+            return !bool.TryParse(raw, out var val) || val;
         }
 
         public static string GetOtlpEndpoint()

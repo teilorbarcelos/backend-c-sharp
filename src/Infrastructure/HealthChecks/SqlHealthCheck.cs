@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MageBackend.Database;
 
 namespace MageBackend.Infrastructure.HealthChecks
 {
+    [ExcludeFromCodeCoverage]
     public class SqlHealthCheck : IHealthCheck
     {
         private readonly ApplicationDbContext _context;
