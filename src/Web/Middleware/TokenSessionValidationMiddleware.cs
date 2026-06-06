@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using MageBackend.Infrastructure.Auth;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace MageBackend.Core.Middleware
+namespace MageBackend.Web.Middleware
 {
     public class TokenSessionValidationMiddleware
     {
@@ -72,7 +72,7 @@ namespace MageBackend.Core.Middleware
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsync("{\"error\": \"UnauthorizedError\", \"message\": \"Sessão inválida ou expirada. Faça login novamente.\"}");
+            await context.Response.WriteAsync("{\"error\": \"UnauthorizedError\", \"message\": \"Sess\u00e3o inv\u00e1lida ou expirada. Fa\u00e7a login novamente.\"}");
         }
     }
 }

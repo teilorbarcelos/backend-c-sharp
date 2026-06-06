@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MageBackend.Infrastructure.Storage;
-using MageBackend.Core.Filters;
+using MageBackend.Web.Filters;
 
 namespace MageBackend.Features.Storage
 {

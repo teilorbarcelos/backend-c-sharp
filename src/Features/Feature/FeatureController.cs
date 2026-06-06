@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using MageBackend.Core;
-using MageBackend.Core.Filters;
+using MageBackend.Web;
+using MageBackend.Web.Filters;
 using MageBackend.Shared;
 using MageBackend.Features.Feature.Commands;
 using MageBackend.Features.Feature.Queries;

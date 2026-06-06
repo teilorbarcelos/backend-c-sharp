@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using MageBackend.Infrastructure.Auth;
 
-namespace MageBackend.Core.Middleware
+namespace MageBackend.Web.Middleware
 {
     public class JwtAuthenticationMiddleware
     {
@@ -39,7 +39,6 @@ namespace MageBackend.Core.Middleware
                 }
                 catch
                 {
-                    /* Token is invalid. Let downstream authorization filters handle it if the endpoint is protected. */
                 }
             }
 

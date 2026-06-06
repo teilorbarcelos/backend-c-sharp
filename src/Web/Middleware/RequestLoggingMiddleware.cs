@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Serilog;
 
-namespace MageBackend.Core.Middleware
+namespace MageBackend.Web.Middleware
 {
     public class RequestLoggingMiddleware
     {
@@ -22,7 +22,6 @@ namespace MageBackend.Core.Middleware
         {
             var path = context.Request.Path.Value ?? "/";
 
-            /* Skip logging for high-frequency observability endpoints */
             if (_silentPaths.Contains(path))
             {
                 await _next(context);
@@ -45,7 +44,7 @@ namespace MageBackend.Core.Middleware
                 var level = ResolveLogLevel(statusCode);
 
                 Log.Write(level,
-                    "{Method} {Path}{Query} → {StatusCode} ({Duration}ms)",
+                    "{Method} {Path}{Query} \u2192 {StatusCode} ({Duration}ms)",
                     method, path, queryString, statusCode, sw.ElapsedMilliseconds);
             }
         }

@@ -1,7 +1,7 @@
 using MageBackend.Database;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using MageBackend.Core;
+using MageBackend.Web;
 using MageBackend.Shared.Cqrs;
 
 namespace MageBackend.Features.Product.Commands

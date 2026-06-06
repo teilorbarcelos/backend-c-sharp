@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using MageBackend.Infrastructure.Auditing;
 
-namespace MageBackend.Core.Middleware
+namespace MageBackend.Web.Middleware
 {
     public class AuditLogMiddleware
     {
@@ -47,12 +47,6 @@ namespace MageBackend.Core.Middleware
             var requestBody = await ReadRequestBodyAsync(context);
             var sanitizedParams = SanitizeBody(requestBody);
 
-            /*
-             * Mantém paridade com o middleware antigo: o response body NÃO é
-             * realmente capturado (o stream original nunca é swapado). O
-             * DiffValue acaba sendo o sentinela {statusCode}. Captura completa
-             * de body fica como melhoria separada — fora do escopo deste refac.
-             */
             await _next(context);
 
             var entry = BuildEntry(context, method, path, sanitizedParams, responseBodyText: string.Empty);
@@ -156,11 +150,6 @@ namespace MageBackend.Core.Middleware
                 return JsonSerializer.Serialize(dictionary);
             }
 #pragma warning disable S2221
-            /*
-             * Body malformado (não-JSON, fragmento, etc.) volta cru. Catch
-             * genérico é intencional: a auditoria não pode derrubar a request
-             * por causa de payload inesperado.
-             */
             catch
             {
                 return body;

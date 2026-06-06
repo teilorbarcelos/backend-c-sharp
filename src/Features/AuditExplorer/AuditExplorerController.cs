@@ -6,8 +6,8 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using MageBackend.Database;
-using MageBackend.Core;
-using MageBackend.Core.Filters;
+using MageBackend.Web;
+using MageBackend.Web.Filters;
 
 namespace MageBackend.Features.AuditExplorer
 {

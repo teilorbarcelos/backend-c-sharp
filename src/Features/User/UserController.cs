@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using MageBackend.Core;
-using MageBackend.Core.Filters;
+using MageBackend.Web;
+using MageBackend.Web.Filters;
 using MageBackend.Features.User.Commands;
 using MageBackend.Features.User.Queries;
 using MageBackend.Infrastructure.Auth;
@@ -116,7 +116,7 @@ namespace MageBackend.Features.User
         [ProducesResponseType(typeof(UserResponseDto), 200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public override async Task<ActionResult<UserResponseDto>> ToggleStatus(string id, [FromBody] MageBackend.Core.ToggleStatusDto dto)
+        public override async Task<ActionResult<UserResponseDto>> ToggleStatus(string id, [FromBody] MageBackend.Web.ToggleStatusDto dto)
         {
             var result = await Mediator.Send(new ToggleUserStatusCommand(id, dto.Active));
             if (!result.Success) return StatusCode(result.StatusCode, new { message = result.Error });

@@ -6,20 +6,10 @@ using StackExchange.Redis;
 using System;
 using System.Threading.Tasks;
 
-namespace MageBackend.Core.Middleware
+namespace MageBackend.Web.Middleware
 {
     public class RateLimitMiddleware
     {
-        /*
-         * Limites por endpoint definidos em RateLimitConfig (single source of truth).
-         * Cada endpoint tem bucket próprio no Redis (chave ratelimit:{Key}:{ip}),
-         * então esgotar o limite de login não afeta a listagem de user, e
-         * vice-versa. Defense em profundidade contra DoS coordenado em
-         * múltiplos endpoints.
-         *
-         * Defaults globais ainda são env-overridable (RATE_LIMIT_MAX /
-         * RATE_LIMIT_WINDOW_SECONDS) para tuning em runtime sem deploy.
-         */
         private static readonly LuaScript RateLimitScript = LuaScript.Prepare(
             "local current = redis.call('INCR', @key)\n" +
             "if current == 1 then\n" +
@@ -51,12 +41,6 @@ namespace MageBackend.Core.Middleware
             var max = ApplyEnvOverride(limit.Max);
             var windowSeconds = ApplyEnvOverrideWindow(limit.WindowSeconds);
 
-            /*
-             * Mesmo quando o rate limit está desabilitado (kill switch) ou o
-             * Redis está fora, expomos os headers com limit=remaining para
-             * que o cliente saiba qual seria o teto. Não incrementamos o
-             * contador — só exibimos o valor configurado.
-             */
             if (IsDisabled())
             {
                 WriteHeaders(context, max, max, windowSeconds);
@@ -102,12 +86,6 @@ namespace MageBackend.Core.Middleware
                 return (values[0], values[1]);
             }
 #pragma warning disable S2221
-            /*
-             * Catch genérico justificado: o rate limit é defesa best-effort.
-             * Qualquer falha (Redis down, timeout, payload inesperado, NRE) deve
-             * fazer fail-open ao invés de derrubar a request com 500 — preserva
-             * a disponibilidade do API mesmo em degradação do Redis.
-             */
             catch (Exception ex)
             {
                 Log.Warning(ex, "[RateLimit] Redis call failed for key {Key}; failing open", key);
@@ -122,12 +100,6 @@ namespace MageBackend.Core.Middleware
                    Environment.GetEnvironmentVariable("ENVIRONMENT") == "test";
         }
 
-        /*
-         * Env vars sobrescrevem apenas o limite/window do bucket default.
-         * Endpoints específicos (login, refresh, etc.) sempre usam os
-         * valores hard-coded de RateLimitConfig — são decisões de segurança,
-         * não de tuning operacional.
-         */
         private static int ApplyEnvOverride(int defaultMax)
         {
             var raw = Environment.GetEnvironmentVariable("RATE_LIMIT_MAX");

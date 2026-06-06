@@ -6,10 +6,11 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using MageBackend.Shared.Cqrs;
+using MageBackend.Web;
 
 namespace MageBackend.Features.User.Commands
 {
-    public record UpdateUserCommand : IRequest<CommandResult<UserResponseDto>>, Core.ICommandWithId
+    public record UpdateUserCommand : IRequest<CommandResult<UserResponseDto>>, ICommandWithId
     {
         public string Id { get; init; } = string.Empty;
         public string? Name { get; init; }

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace MageBackend.Core
+namespace MageBackend.Web
 {
     public class BaseApiController : ControllerBase
     {

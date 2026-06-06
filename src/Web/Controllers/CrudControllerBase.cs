@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MageBackend.Shared.Cqrs;
-using MageBackend.Core.Filters;
+using MageBackend.Web.Filters;
 using MageBackend.Domain;
 using MageBackend.Shared;
 using MediatR;
@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using System;
 
-namespace MageBackend.Core
+namespace MageBackend.Web
 {
     public interface ICommandWithId
     {

@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using MageBackend.Database;
-using MageBackend.Core;
-using MageBackend.Core.Middleware;
-using MageBackend.Core.Filters;
+using MageBackend.Web;
+using MageBackend.Web.Middleware;
+using MageBackend.Web.Filters;
 using FluentValidation;
 
 namespace MageBackend.Features.{{EntityName}}

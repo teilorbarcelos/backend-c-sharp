@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MageBackend.Infrastructure.Auditing;
-using MageBackend.Core.Middleware;
+using MageBackend.Web.Middleware;
 using MageBackend.Database;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;

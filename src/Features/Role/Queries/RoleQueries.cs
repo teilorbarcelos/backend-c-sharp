@@ -1,4 +1,4 @@
-using MageBackend.Core;
+using MageBackend.Web;
 using MageBackend.Shared;
 using MageBackend.Database;
 using MediatR;

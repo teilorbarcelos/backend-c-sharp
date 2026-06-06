@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
-using MageBackend.Core.Middleware;
+using MageBackend.Web.Middleware;
 using MageBackend.Infrastructure.Auth;
 
-namespace MageBackend.Core.Filters
+namespace MageBackend.Web.Filters
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class FeatureNameAttribute : Attribute

@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
-using MageBackend.Core;
+using MageBackend.Web;
 
 namespace MageBackend.Shared
 {

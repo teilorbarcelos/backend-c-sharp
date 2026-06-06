@@ -3,7 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using MageBackend.Core.Middleware;
+using MageBackend.Web.Middleware;
 using MageBackend.Infrastructure.Auth;
 using Moq;
 using StackExchange.Redis;
