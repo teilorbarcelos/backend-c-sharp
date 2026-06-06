@@ -1,233 +1,251 @@
 # Advanced C# (ASP.NET Core) Backend API Boilerplate
 
-Uma arquitetura robusta, moderna e de alta performance construída com **C#**, **ASP.NET Core 10.0** e **Entity Framework Core (EF Core)**. O projeto adota o padrão de **Vertical Slice Architecture (VSA)** para garantir fatias funcionais de baixo acoplamento, alta coesão e facilidade de manutenção.
+Arquitetura robusta, moderna e de alta performance construída com **C#**, **ASP.NET Core 10.0** e **Entity Framework Core**. Adota **Vertical Slice Architecture (VSA)** com fatias funcionais de baixo acoplamento e alta coesão.
 
 ---
 
-## 🚀 Tecnologias Core
+## Tecnologias Core
 
-- **Runtime & SDK:** [.NET 10.0](https://dotnet.microsoft.com/) (Extrema performance e recursos modernos do C#)
-- **Framework Web:** [ASP.NET Core Web API](https://learn.microsoft.com/en-us/aspnet/core/)
-- **ORM:** [Entity Framework Core (EF Core)](https://learn.microsoft.com/en-us/ef/core/)
-- **Banco de Dados:** SQL Server (Produção/Desenv) & Redis (Cache de Sessões e Rate Limit)
-- **Mensageria:** RabbitMQ (Comunicação Assíncrona e Filas de Mensagem)
-- **Documentação:** Swagger (OpenAPI 3.0) com UI integrada em `/v1/docs`
-- **Métricas e Observabilidade:** Prometheus-net + Grafana (com Dashboards pré-configurados)
-- **CI/CD:** GitHub Actions configurado para Build e Testes Automatizados
-- **Qualidade de Código:** Husky (Git Hooks) + dotnet format (Linting)
-- **Testes:** xUnit + Testcontainers.NET (Criação dinâmica de containers SQL Server, Redis e RabbitMQ durante o ciclo de testes)
+- **Runtime & SDK:** .NET 10.0
+- **Framework Web:** ASP.NET Core Web API
+- **ORM:** Entity Framework Core 10
+- **Banco de Dados:** SQL Server + Redis (cache de sessões, rate limit)
+- **Mensageria:** RabbitMQ com DLX/DLQ, retry, Publisher Confirms
+- **Documentação:** OpenAPI 3.0 via `v1/docs`
+- **Observabilidade:** OpenTelemetry (OTLP) + Prometheus + Grafana
+- **Qualidade:** SonarQube + Husky + dotnet format
+- **Testes:** xUnit + Testcontainers (SQL/Redis/RabbitMQ reais)
+- **CI/CD:** GitHub Actions
 
 ---
 
-## 🏗️ Arquitetura e Padrões de Projeto
+## Arquitetura
 
 ### Vertical Slice Architecture (VSA)
-Em vez de organizar o código por camadas técnicas (Controllers, Services, Repositories), o projeto organiza o código em **Feature Slices** (Fatias Verticais) localizadas na pasta `src/Features`.
-- Cada pasta representa uma funcionalidade de negócios (Ex: `Feature`, `Auth`, `Role`, `User`, `Storage`).
-- Todo o ciclo da funcionalidade (Controller, Request/Response DTOs, Validador, Lógica e Mapeamento de Entidades) fica agrupado, facilitando a alteração e diminuindo acoplamento.
 
-### Record Types & FluentValidation
-Uso de C# `record` types imutáveis para DTOs de Request e Response, garantindo segurança na transferência de dados. As validações de payload são desacopladas da lógica de negócios e declaradas usando `FluentValidation`.
+Código organizado em **Feature Slices** em `src/Features/`. Cada pasta contém todo o ciclo da funcionalidade: Controller, Command/Query DTOs, Validadores, Handlers e Mappers. Sem camadas Service/Repository genéricas.
 
-### Filtros Dinâmicos, Paginação e Ordenação
-Um mecanismo robusto construído sobre métodos de extensão `IQueryable` (`QueryableExtensions.cs`). Permite que os controladores recebam filtros de busca flexíveis, ranges de datas, ordenação e paginação, compilando tudo dinamicamente em instruções SQL nativas executadas no banco de dados.
+```
+src/
+├── Core/             → Primitivas de domínio e CQRS
+├── Domain/           → BaseEntity, SearchRequest
+├── Shared/           → QueryableExtensions, Cqrs, DateTimeHelper
+├── Web/              → Controllers base, Middleware, Filters
+├── Database/         → DbContext, Migrations, Entities
+├── Infrastructure/   → Auth, Messaging, Pdf, Storage, Auditing, HealthChecks, Configuration
+├── Features/         → Auth, User, Role, Feature, Product, Storage, Dashboard, AuditExplorer
+└── Migrations/       → EF Core migrations versionadas
+```
 
-### Soft Delete & LGPD Compliance
-- Suporte nativo a exclusão lógica via campos `is_deleted` e `deleted_at`.
-- Funcionalidade para anonimização LGPD de informações sensíveis (como nome e email de usuários deletados).
+### Padrões e Práticas
 
-### Dashboard Analítico com T-SQL Nativo
-Endpoint analítico (`GET /v1/dashboard/stats`) projetado para retornar métricas consolidadas em séries temporais diárias e rankings de atividade.
-- **T-SQL Parametrizado:** Para obter máxima performance de execução no banco de dados SQL Server, as consultas de agrupamento e ordenação analítica utilizam comandos SQL nativos via `SqlQueryRaw`.
-
----
-
-## 🔐 Segurança e Controle de Acesso (RBAC)
-
-### Autenticação JWT e Sessões via Redis
-- Autenticação baseada em tokens JWT (com suporte a Refresh Token).
-- Rastreamento em tempo real de sessões de usuário no Redis.
-- Controle centralizado de invalidação de tokens via `SessionManager`. Desativar um usuário ou alterar suas permissões invalida instantaneamente suas sessões ativas no Redis.
-
-### RBAC Granular (Role-Based Access Control)
-- Controle de acesso fino por funcionalidade baseado em permissões (ex: `view`, `create`, `delete`, `activate`).
-- Verificação feita de forma declarativa nos métodos dos controladores usando o atributo personalizado `[CheckPermission("recurso", "acao")]`.
-
-### Rate Limiting Inteligente
-- Middleware integrado que protege a API contra abusos (DoS/Brute Force).
-- Resposta automática com headers HTTP adequados (`x-ratelimit-limit`, `x-ratelimit-remaining`).
+- **CQRS** com MediatR — commands e queries separados por slice
+- **FluentValidation** — validação desacoplada dos handlers
+- **Registros Imutáveis** (`record`) para DTOs de request/response
+- **Soft Delete & LGPD** — exclusão lógica com anonimização
+- **RBAC Granular** — `[CheckPermission("feature", "action")]` com permissões view/create/delete/activate
 
 ---
 
-## 📝 Auditoria e Logs do Sistema
+## Segurança
 
-### Trilha de Auditoria Automática
-O `AuditLogMiddleware` intercepta e grava automaticamente na tabela `tb_audit_log` todas as operações de mutação do banco de dados (POST, PUT, DELETE, PATCH). Registra o IP do solicitante, rota, ID do usuário logado, timestamps e oculta dados confidenciais (como senhas).
-O projeto também conta com o módulo `AuditExplorerController`, que permite aos administradores buscar e filtrar esse histórico de ponta a ponta.
+### Autenticação JWT + Refresh Token
+- Tokens JWT com `jti` único, `sv` (session version) e `kid` (key id)
+- Refresh tokens armazenados em Redis por usuário (multi-device)
+- Invalidação O(1) via `SessionVersion` — desativar usuário/role invalida todas as sessões instantaneamente
 
-### Logs de Erro Centrais
-O `ErrorHandlerMiddleware` gerencia globalmente falhas de execução e validação da API. Exceções não tratadas são transformadas em respostas HTTP estruturadas amigáveis e salvas de forma detalhada na tabela `tb_error_log`.
+### Anti-Enumeração
+- Todos os endpoints de auth (`/login`, `/validate`, `/change`) retornam a **mesma mensagem genérica** independente do erro real
+- A causa real é logada internamente para o SOC
 
----
+### Rate Limit Distribuído
+- Limites por endpoint via Redis + Lua script atômico
+- Buckets independentes: login (5/min), password_request (3/min), export (10/min), default (100/min)
+- Headers: `x-ratelimit-limit`, `x-ratelimit-remaining`, `x-ratelimit-reset`
+- Fail-open: Redis indisponível não bloqueia requests
 
-## 🛠️ CLI de Geração Automática de Código (Scaffolder)
-
-O projeto dispõe de scripts geradores interativos e automatizados para acelerar o desenvolvimento, garantindo paridade com a arquitetura do projeto.
-
-### 1. Gerador de CRUD Completo
-O script `scripts/generate_crud.py` lê novas entidades definidas no arquivo `src/Database/Entities.cs` e constrói fatias verticais de código completas, incluindo testes automatizados de ponta a ponta e integração com o banco de dados.
-
-#### Passo a Passo:
-1. **Defina a Entidade:**
-   Adicione a nova classe de modelo no arquivo `src/Database/Entities.cs`:
-   ```csharp
-   public class Category
-   {
-       public string Id { get; set; } = string.Empty;
-       public string Name { get; set; } = string.Empty;
-       public bool IsDeleted { get; set; }
-   }
-   ```
-2. **Execute o Comando do Scaffolder:**
-   ```bash
-   make generate name=Category
-   ```
-3. **Configure o RBAC de forma interativa:**
-   O terminal solicitará informações de registro da feature no banco:
-   - Se deseja adicionar as permissões ao banco.
-   - Nome amigável e descrição da feature.
-   - Se deseja associar a nova feature automaticamente ao perfil Administrador.
-4. **Aplique as Migrations do EF Core:**
-   O script perguntará se você deseja criar e aplicar a migration imediatamente no banco de dados.
-   
-O resultado é um módulo completo contendo rotas REST, RBAC integrado, testes cobrindo rotas CRUD, paginação, filtros e auditoria.
-
-### 2. Gerador de Storage Providers
-O script `scripts/generate_storage.py` permite alternar dinamicamente o provedor de persistência de arquivos da API, instalando dependências NuGet e gerando a classe concreta do driver e seus respectivos testes unitários mockados.
-
-#### Passo a Passo:
-1. **Execute o Comando:**
-   ```bash
-   make generate-storage
-   ```
-2. **Selecione a opção desejada:**
-   - `[1] Local Storage` (Persistência no diretório local `StorageData`)
-   - `[2] AWS S3` (Integração com Amazon S3)
-   - `[3] Google Cloud Storage` (Integração com GCS)
-   - `[4] Azure Blob Storage` (Integração com Azure Blobs)
-3. **Atualize o arquivo `.env` com as credenciais do provedor selecionado:**
-   - **AWS S3:** `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `AWS_BUCKET_NAME`
-   - **GCS:** `GCS_BUCKET_NAME` (e caminho das credenciais Google)
-   - **Azure:** `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_CONTAINER_NAME`
-
-Tanto o driver de nuvem selecionado quanto seus respectivos testes mockados com `Moq` são gerados na hora, mantendo a cobertura de código da aplicação.
+### CORS
+- Allowlist explícita por ambiente via `CORS_ALLOWED_ORIGINS`
+- `AllowAnyOrigin` + `AllowCredentials` removido (vetor CSRF)
 
 ---
 
-## 📩 Mensageria (RabbitMQ)
+## Observabilidade
 
-A integração com o RabbitMQ permite publicar e subscrever a eventos de fila de forma assíncrona por meio do `RabbitMQProvider`.
-- Ativação controlada pela variável `.env` `MESSAGING_ENABLED=true`.
-- Rastreia e reconecta a filas de forma automática caso o broker caia.
-- Totalmente testado localmente via containers isolados.
+### OpenTelemetry Tracing
+- Tracing distribuído com auto-instrumentação para ASP.NET Core, EF Core, Redis e HTTP Client
+- Exportação OTLP para Jaeger/Tempo/Grafana Cloud
+- Ativado via `OTEL_ENABLED=true`
 
----
+### Métricas Prometheus
+- `prometheus-net` com métricas nativas do .NET (GC, CPU, ThreadPool)
+- Endpoint `/metrics` exposto para scrape
+- Dashboard Grafana pré-configurado em `docker-compose.metrics.yml`
 
-## 📊 Observabilidade e Métricas (Prometheus & Grafana)
-
-A aplicação conta com uma stack completa de observabilidade para monitoramento em tempo real, já provisionada (Infrastructure as Code).
-
-- **Prometheus-net:** Expõe e captura automaticamente métricas do .NET 10 (Garbage Collector, CPU, Memória, Threads) e das requisições HTTP (latência, status code, taxa de erros).
-- **Grafana Dashboard Pré-configurado:** O repositório já inclui configurações e dashboards profissionais do Grafana! Ao rodar a stack, você ganha acesso instantâneo a gráficos de uso de CPU, requisições por segundo, taxa de sucesso e tempos de resposta, sem precisar de nenhuma configuração manual.
-
-### 📈 Métricas Avançadas para Alta Concorrência (Nativas do .NET)
-Para ambientes de alta volumetria, a nossa stack já suporta e exporta métricas essenciais de nível enterprise, que podem ser facilmente adicionadas aos dashboards:
-- **Thread Pool Starvation:** Monitoramento de threads em uso vs. na fila, crucial para evitar gargalos em operações assíncronas.
-- **Database Connection Pool:** Acompanhamento de conexões ativas e em espera com o SQL Server para prevenir *Connection Pool Exhaustion*.
-- **Garbage Collection (GC):** Frequência de coletas por geração (Gen 0, 1 e 2) e uso da *Large Object Heap (LOH)*, essenciais para evitar *GC Pauses* em picos de tráfego.
-- **Hit Ratio de Cache (Redis):** Taxa de acertos vs erros (*hits/misses*) nas sessões e rate limiters.
-- **Saúde das Filas (RabbitMQ):** Profundidade de filas e backpressure (mensagens *Unacked* e prontas).
-
-### Como acessar:
-1. Suba a stack de métricas:
-   ```bash
-   make metrics-up
-   ```
-2. Acesse o **Grafana** em `http://localhost:3001`
-   - **Login padrão:** `admin` / **Senha padrão:** `admin`
-3. O **Prometheus** (scraper) roda de forma invisível no background em `http://localhost:9090`.
+### Health Checks
+- Endpoint `/health` com checks profundos para SQL, Redis, RabbitMQ e PDF Service
+- Status individual por dependência e latência em ms
+- Resposta 200 mesmo em degraded (ideal para k8s liveness probe)
 
 ---
 
-## ⚙️ Instalação e Execução Local
+## Mensageria (RabbitMQ)
+
+- **Publisher Confirms** — garantia de entrega no broker (env `RABBIT_PUBLISHER_CONFIRMS`)
+- **DLX/DLQ** — mensagens reprovadas vão para Dead Letter Queue
+- **Retry Queue** — fila com TTL de 5s e reenvio automático
+- **Prefetch Count** controlado (`RABBIT_PREFETCH_COUNT`, default 16)
+- **Message Versioning** — header `x-message-version` em todas as publicações
+- **Consumer BackgroundService** — `RabbitMQConsumerService` gerenciado pelo ASP.NET Core lifecycle
+- Desabilitável via `MESSAGING_ENABLED=false`
+
+---
+
+## Performance e Banco de Dados
+
+### Índices Hot-Path
+10 índices na migration inicial para as queries mais frequentes:
+- `User.Email` (unique), `User.CognitoId`, `User.Document`, `User.IdRole`
+- `Product.Sku` (unique), `Product.Category`
+- `tb_audit` composite `(IdUser, CreatedAt)`
+
+### NoTracking por Default
+- `QueryTrackingBehavior.NoTracking` no DbContext — ganho de 20-30% em queries de leitura
+- `.AsTracking()` explícito apenas nos 12 handlers que escrevem
+- Teste de regressão `DatabaseOptimizationTests` protege contra reverter
+
+### Pipeline de Resiliência (Polly v8)
+- PDF Provider com retry (3x), circuit breaker, timeout (10s attempt, 30s total)
+- Configurável via env vars `PDF_RESILIENCE_*`
+- Aplicado a qualquer cliente HTTP via `AddStandardResilienceHandler()`
+
+---
+
+## Auditoria
+
+- `AuditLogMiddleware` captura toda mutação (POST/PUT/DELETE/PATCH)
+- Fila `Channel<T>` com `BackgroundService` — sem ThreadPool starvation
+- Batching de 50 registros por transação
+- Senhas e campos sensíveis são redactados automaticamente
+- Capacidade configurável via `AUDIT_QUEUE_CAPACITY` (default 10000)
+
+---
+
+## Docker
+
+### Dockerfile Multi-stage
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-jammy-chiseled AS runtime
+```
+
+Apenas ~100MB na imagem final (chiseled = sem shell, sem pacotes extras).
+
+### Graceful Shutdown
+- Timeout configurável via `SHUTDOWN_TIMEOUT_SECONDS` (default 30s)
+- `ApplicationStopping` registrado para drenar requests in-flight e desconectar RabbitMQ antes de parar
+- Logs informam início e fim do shutdown
+
+### Init-Container
+O mesmo container pode rodar como init job para migrations:
+```bash
+docker run -e DATABASE_URL=... -e MIGRATE_ONLY=true magebackend
+```
+
+---
+
+## Instalação e Execução Local
 
 ### Pré-requisitos
 - .NET 10 SDK
 - Docker & Docker Compose
-- EF Core CLI instalado globalmente:
-  ```bash
-  dotnet tool install --global dotnet-ef
-  ```
+- EF Core CLI: `dotnet tool install --global dotnet-ef`
 
-### Configuração Inicial
-1. **Instale as ferramentas locais (Husky, formatadores):**
-   ```bash
-   make setup
-   ```
-2. **Restaure as dependências NuGet:**
-   ```bash
-   dotnet restore src
-   ```
-2. **Configure suas variáveis de ambiente:**
-   Crie ou edite o arquivo `.env` na raiz do projeto:
-   ```env
-   PORT=8888
-   DATABASE_URL="Server=localhost,1433;Database=backend_c_sharp;User Id=sa;Password=YourPassword123;TrustServerCertificate=True;"
-   REDIS_URL="localhost:6379"
-   RABBIT_URL="amqp://guest:guest@localhost:5672/"
-   MESSAGING_ENABLED=true
-   JWT_SECRET="sua-chave-secreta-muito-longa-e-segura-de-exemplo-aqui"
-   ```
-
-### Execução da Infraestrutura
-Suba os containers de banco de dados, cache e mensageria:
+### Setup
 ```bash
-make infra-up
+make setup                # Ferramentas locais + Husky hooks
+dotnet restore src        # Dependências NuGet
+make infra-up             # SQL + Redis + RabbitMQ
+make db-migrate           # Aplica migrations
+make dev                  # Inicia com Hot Reload em :8888
 ```
 
-### Executar Migrations
-Crie e atualize as tabelas do banco de dados local:
+### Stack de Observabilidade
 ```bash
-make db-migrate
+make metrics-up           # Prometheus + Grafana (localhost:3001)
 ```
 
-### Iniciar a API
-Inicie o servidor de desenvolvimento com Hot Reload ativo:
-```bash
-make dev
+### Ambiente
+Configure o `.env` na raiz:
+```env
+PORT=8888
+DATABASE_URL="Server=localhost,1433;..."
+REDIS_URL="localhost:6379"
+RABBIT_URL="amqp://guest:guest@localhost:5672/"
+MESSAGING_ENABLED=true
+JWT_SECRET="sua-chave-secreta-aqui"
+CORS_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:4200"
 ```
-
-A API estará disponível no endereço: `http://localhost:8888/v1/docs` (Swagger UI).
 
 ---
 
-## 🧪 Rodando Testes e Cobertura
+## Testes
 
-O projeto garante o funcionamento correto através de testes de integração agressivos baseados em **Testcontainers.NET**. Toda vez que os testes rodam, instâncias reais do SQL Server, Redis e RabbitMQ sobem isoladamente dentro do Docker para executar as rotinas.
-
-### Executar a suíte de testes:
+### Suíte completa (358 testes)
 ```bash
-make test
+make test                 # Testes com Testcontainers (SQL/Redis/RabbitMQ)
 ```
 
-### Gerar relatório de cobertura de código (Coverlet):
+### Cobertura
 ```bash
-make coverage
+make coverage             # Coverlet > 99% line coverage
 ```
-> O Git Hook pré-commit (`Husky`) impedirá o envio de códigos que não atendam aos requisitos mínimos de cobertura de código configurados (Mínimo: 95% de Cobertura de Linha).
 
-### Linting e Padrão de Código
-Para garantir a qualidade, o projeto possui comandos de lint e formatação que barram commits com código sujo:
+### Qualidade
 ```bash
-make lint
+make lint                 # Husky + dotnet format + verificação de comentários
+make sonar                # SonarQube scan (requer servidor em :9000)
 ```
+
+### Compliance E2E
+```bash
+# Projeto separado: mage-backend-compliance
+make test-c-sharp         # 50 testes de ponta a ponta
+```
+
+---
+
+## Comandos Úteis (Makefile)
+
+| Comando | Descrição |
+|---|---|
+| `make infra-up` | Sobe SQL + Redis + RabbitMQ |
+| `make dev` | Hot Reload em :8888 |
+| `make test` | Testes com Testcontainers |
+| `make coverage` | Testes + relatório Coverlet |
+| `make lint` | Verifica comentários `//` + dotnet format |
+| `make db-migrate` | Aplica migrations EF Core |
+| `make migration name=...` | Cria nova migration |
+| `make generate name=...` | Scaffold de CRUD completo |
+| `make generate-storage` | Scaffold de Storage Provider |
+| `make metrics-up` | Prometheus + Grafana |
+| `make sonar` | SonarQube scan |
+| `make setup` | Instala ferramentas + hooks |
+
+---
+
+## Qualidade e CI/CD
+
+### SonarQube Quality Gate
+- `new_coverage >= 80%` ✅
+- `new_duplicated_lines_density <= 3%` ✅
+- `new_violations = 0` ✅
+- `caycStatus = compliant` ✅
+
+### GitHub Actions
+- CI roda lint + testes + build em cada PR para main/develop
+- SonarQube Scan integrado (token via `SONAR_TOKEN`)
+
+### Pre-commit Hook (Husky)
+- Bloqueia `// comments` no código-fonte (use `/* */` ou `///`)
+- `dotnet format --verify-no-changes` — formatação consistente

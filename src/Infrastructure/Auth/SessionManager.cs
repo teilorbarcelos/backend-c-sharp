@@ -44,6 +44,57 @@ namespace MageBackend.Infrastructure.Auth
     {
         private static readonly TimeSpan SessionVersionTtl = TimeSpan.FromDays(7);
 
+        /*
+         * Lê a SessionVersion atual de um user com cache-aside.
+         *
+         * É a fonte única de verdade para o versionamento de sessão, usada
+         * tanto pelo TokenSessionValidationMiddleware (checagem do JWT) quanto
+         * pelo RefreshTokenHandler (defesa em profundidade no /v1/auth/refresh).
+         *
+         * Fluxo:
+         *   1. Lê session:user:{id}:version do Redis (O(1))
+         *   2. Cache hit → retorna versão cacheada
+         *   3. Cache miss → hidrata do DB (Auth.SessionVersion) e reescreve no
+         *      Redis com TTL de 7d. Isso permite que o sistema sobreviva a um
+         *      wipe do Redis (fail-secure + auto-recovery).
+         *
+         * Retorna null se o user não tem Auth (sessão inválida).
+         */
+        public static async Task<int?> GetCurrentVersionAsync(
+            string userId,
+            ApplicationDbContext dbContext,
+            IDatabase? redisDb = null)
+        {
+            redisDb ??= RedisProvider.Database;
+            var sessionKey = $"session:user:{userId}:version";
+
+            var redisValue = await redisDb.StringGetAsync(sessionKey);
+            if (redisValue.HasValue && int.TryParse(redisValue.ToString(), out var cached))
+            {
+                return cached;
+            }
+
+            return await HydrateFromDatabaseAsync(userId, dbContext, redisDb, sessionKey);
+        }
+
+        private static async Task<int?> HydrateFromDatabaseAsync(
+            string userId,
+            ApplicationDbContext dbContext,
+            IDatabase redisDb,
+            string sessionKey)
+        {
+            var user = await dbContext.User
+                .AsNoTracking()
+                .Include(u => u.Auth)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user?.Auth == null) return null;
+
+            var version = user.Auth.SessionVersion;
+            await redisDb.StringSetAsync(sessionKey, version.ToString(), SessionVersionTtl);
+            return version;
+        }
+
         public static async Task<int> InvalidateUserSessionsAsync(string userId, ApplicationDbContext context)
         {
             Log.Information("[SessionManager] Invalidating sessions for user {UserId}", userId);
@@ -76,7 +127,20 @@ namespace MageBackend.Infrastructure.Auth
 
             var redisDb = RedisProvider.Database;
             await redisDb.StringSetAsync($"session:user:{userId}:version", currentVersion.ToString(), SessionVersionTtl);
-            Log.Information("[SessionManager] Incremented session version for user {UserId} to {Version}", userId, currentVersion);
+
+            /*
+             * Bug fix: bump só do SessionVersion não basta. O /v1/auth/refresh
+             * está nos public paths do TokenSessionValidationMiddleware
+             * (bypass do sv check), e o RefreshTokenHandler valida
+             * apenas KeyExistsAsync(session:user:{id}:refresh:{hash}).
+             * Se a chave continuar viva, o user consegue refresh imediatamente
+             * após a invalidação. Apaga TODAS as chaves de refresh do user.
+             */
+            var deletedRefreshKeys = await DeleteRefreshTokensAsync(userId, redisDb);
+
+            Log.Information(
+                "[SessionManager] Incremented session version for user {UserId} to {Version} (deleted {RefreshCount} refresh keys)",
+                userId, currentVersion, deletedRefreshKeys);
             return currentVersion;
         }
 
@@ -109,6 +173,8 @@ namespace MageBackend.Infrastructure.Auth
             var redisDb = RedisProvider.Database;
             var batch = redisDb.CreateBatch();
             var tasks = new List<Task>(updatedAuths.Count);
+            var totalDeletedRefreshKeys = 0L;
+
             foreach (var auth in updatedAuths)
             {
                 if (userIdByAuth.TryGetValue(auth.Id, out var userId))
@@ -119,7 +185,52 @@ namespace MageBackend.Infrastructure.Auth
             batch.Execute();
             await Task.WhenAll(tasks);
 
-            Log.Information("[SessionManager] Invalidated sessions for {Count} users", userAuths.Count);
+            /*
+             * Mesmo bug do InvalidateUserSessionsAsync: precisa invalidar
+             * também as refresh keys de cada user do batch. Roda após o
+             * batch de versões pra minimizar o gap em que a versão está
+             * bumpada mas os refresh tokens ainda existem.
+             */
+            foreach (var userId in userAuths.Select(ua => ua.Id))
+            {
+                totalDeletedRefreshKeys += await DeleteRefreshTokensAsync(userId, redisDb);
+            }
+
+            Log.Information(
+                "[SessionManager] Invalidated sessions for {Count} users (deleted {RefreshCount} refresh keys)",
+                userAuths.Count, totalDeletedRefreshKeys);
+        }
+
+        /*
+         * Apaga todas as chaves session:user:{userId}:refresh:* no Redis.
+         *
+         * Implementação multi-shard safe: Itera todos os endpoints do
+         * ConnectionMultiplexer (em cluster, cada shard tem seu próprio
+         * endpoint). Em single-node, só itera um endpoint.
+         *
+         * Usa IServer.Keys(pattern) que internamente usa SCAN (não KEYS,
+         * que é O(N) bloqueante). Filtra replicas para não tentar scan
+         * em nós read-only.
+         */
+        private static async Task<long> DeleteRefreshTokensAsync(string userId, IDatabase redisDb)
+        {
+            var multiplexer = redisDb.Multiplexer;
+            var pattern = $"session:user:{userId}:refresh:*";
+            var database = redisDb.Database;
+            var keysToDelete = new List<RedisKey>();
+
+            foreach (var endpoint in multiplexer.GetEndPoints())
+            {
+                var server = multiplexer.GetServer(endpoint);
+                if (!server.IsConnected || server.IsReplica) continue;
+
+                var materialized = server.Keys(database: database, pattern: pattern, pageSize: 1000).ToList();
+                keysToDelete.AddRange(materialized);
+            }
+
+            if (keysToDelete.Count == 0) return 0;
+
+            return await redisDb.KeyDeleteAsync(keysToDelete.ToArray());
         }
     }
 }

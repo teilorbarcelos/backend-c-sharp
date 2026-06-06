@@ -1,8 +1,9 @@
 using System;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
-using MageBackend.Core.Middleware;
+using MageBackend.Web.Middleware;
 using MageBackend.Infrastructure.Auth;
 using Moq;
 using StackExchange.Redis;
@@ -19,7 +20,7 @@ namespace MageBackend.Tests
             var endpoints = RedisProvider.Connection.GetEndPoints();
             var server = RedisProvider.Connection.GetServer(endpoints[0]);
             var db = RedisProvider.Database;
-            foreach (var key in server.Keys(pattern: "ratelimit:ip:*"))
+            foreach (var key in server.Keys(pattern: "ratelimit:*"))
             {
                 await db.KeyDeleteAsync(key);
             }
@@ -279,6 +280,121 @@ namespace MageBackend.Tests
             finally
             {
                 RateLimitMiddleware.DatabaseAccessor = original;
+                await ClearRateLimitKeysAsync();
+            }
+        }
+
+        /*
+         * ============================================================
+         *  Per-endpoint rate limit (RateLimitConfig)
+         * ============================================================
+         */
+
+        [Fact]
+        public async Task GivenLoginEndpoint_WhenLimitReached_ThenReturns429WithLoginSpecificHeaders()
+        {
+            using var _ = EnableRateLimit();
+            await ClearRateLimitKeysAsync();
+
+            try
+            {
+                var loginPayload = new { email = "ratelimit-test@example.com", password = "x" };
+                for (int i = 0; i < 5; i++)
+                {
+                    var resp = await _client.PostAsJsonAsync("/v1/auth/login", loginPayload);
+                    Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+                    Assert.True(resp.Headers.TryGetValues("x-ratelimit-limit", out var limits));
+                    Assert.Equal("5", limits!.First());
+                }
+
+                var blocked = await _client.PostAsJsonAsync("/v1/auth/login", loginPayload);
+                Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+            }
+            finally
+            {
+                await ClearRateLimitKeysAsync();
+            }
+        }
+
+        [Fact]
+        public async Task GivenLoginLimitReached_WhenRequestingDifferentEndpoint_ThenOtherEndpointStillWorks()
+        {
+            /*
+             * Garante buckets INDEPENDENTES no Redis. Esgotar login NÃO
+             * afeta /v1/user/export/pdf (que tem bucket próprio).
+             *
+             * Estratégia: login como admin PRIMEIRO (1 dos 5), depois esgota
+             * os 4 slots restantes com credenciais inválidas, depois tenta
+             * o 6º (deve ser 429), depois tenta o PDF (deve funcionar).
+             */
+            using var _ = EnableRateLimit();
+            await ClearRateLimitKeysAsync();
+
+            try
+            {
+                var adminLogin = await LoginAsync("admin@email.com", "admin@123");
+                SetAuthHeader(adminLogin.Token);
+
+                for (int i = 0; i < 4; i++)
+                {
+                    var resp = await _client.PostAsJsonAsync("/v1/auth/login",
+                        new { email = "ratelimit-isolation@example.com", password = "x" });
+                    Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+                }
+
+                var loginBlocked = await _client.PostAsJsonAsync("/v1/auth/login",
+                    new { email = "ratelimit-isolation@example.com", password = "x" });
+                Assert.Equal(HttpStatusCode.TooManyRequests, loginBlocked.StatusCode);
+
+                var pdfResp = await _client.GetAsync("/v1/user/export/pdf");
+                Assert.Equal(HttpStatusCode.OK, pdfResp.StatusCode);
+                Assert.True(pdfResp.Headers.TryGetValues("x-ratelimit-limit", out var pdfLimits));
+                Assert.Equal("10", pdfLimits!.First());
+            }
+            finally
+            {
+                ClearAuthHeader();
+                await ClearRateLimitKeysAsync();
+            }
+        }
+
+        [Fact]
+        public async Task GivenMultipleEndpointsWithDifferentBuckets_WhenSameIpHitsBoth_ThenCountersAreSeparate()
+        {
+            using var _ = EnableRateLimit();
+            await ClearRateLimitKeysAsync();
+
+            try
+            {
+                /*
+                 * /v1/auth/password/request tem limite 3/min. Após 3 OK,
+                 * a 4ª já deve ser 429.
+                 */
+                for (int i = 0; i < 3; i++)
+                {
+                    var resp = await _client.PostAsJsonAsync("/v1/auth/password/request",
+                        new { email = "spam-test@example.com" });
+                    Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+                }
+
+                var blocked = await _client.PostAsJsonAsync("/v1/auth/password/request",
+                    new { email = "spam-test@example.com" });
+                Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+
+                /*
+                 * /v1/auth/login tem bucket próprio (5/min), independente
+                 * do password_request (3/min). Mesmo IP, contador separado —
+                 * as 3 calls acima NÃO devem consumir quota do login.
+                 */
+                for (int i = 0; i < 5; i++)
+                {
+                    var loginResp = await _client.PostAsJsonAsync("/v1/auth/login",
+                        new { email = "ratelimit@example.com", password = "x" });
+                    Assert.Equal(HttpStatusCode.Unauthorized, loginResp.StatusCode);
+                }
+            }
+            finally
+            {
                 await ClearRateLimitKeysAsync();
             }
         }

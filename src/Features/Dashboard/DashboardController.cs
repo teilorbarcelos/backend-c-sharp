@@ -1,11 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using MageBackend.Shared;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using MageBackend.Database;
-using MageBackend.Core.Filters;
-using MageBackend.Core;
+using MageBackend.Web.Filters;
 
 namespace MageBackend.Features.Dashboard
 {

@@ -20,7 +20,7 @@ namespace MageBackend.Features.Role.Commands
 
         public async Task<ToggleRoleStatusResult> Handle(ToggleRoleStatusCommand command, CancellationToken cancellationToken)
         {
-            var role = await _context.Role.Where(r => r.Id == command.Id && !r.IsDeleted).FirstOrDefaultAsync(cancellationToken);
+            var role = await _context.Role.AsTracking().Where(r => r.Id == command.Id && !r.IsDeleted).FirstOrDefaultAsync(cancellationToken);
             if (role == null) return new ToggleRoleStatusResult(false, Error: "Role not found", StatusCode: 404);
 
             role.Active = command.Active;

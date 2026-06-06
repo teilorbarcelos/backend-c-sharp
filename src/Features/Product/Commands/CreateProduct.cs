@@ -1,8 +1,8 @@
-using MageBackend.Core;
+using MageBackend.Web;
 using MageBackend.Database;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using MageBackend.Core.Commands;
+using MageBackend.Shared.Cqrs;
 using FluentValidation;
 
 namespace MageBackend.Features.Product.Commands

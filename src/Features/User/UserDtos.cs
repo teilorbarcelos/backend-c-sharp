@@ -40,7 +40,7 @@ namespace MageBackend.Features.User
         }
     }
 
-    public class UserEntityMapper : MageBackend.Core.IEntityMapper<Database.User, UserResponseDto>
+    public class UserEntityMapper : MageBackend.Domain.IEntityMapper<Database.User, UserResponseDto>
     {
         public UserResponseDto MapToDto(Database.User entity)
         {

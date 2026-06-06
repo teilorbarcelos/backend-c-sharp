@@ -7,6 +7,17 @@ namespace MageBackend.Database
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
+            /*
+             * NoTracking por padrão: a esmagadora maioria das queries são
+             * leituras (autenticação, listagens, permissões, audit, dashboard).
+             * Tracking cria snapshots na ChangeTracker, custa CPU + memória,
+             * e em listagens grandes (10K+ items) causa pressão de GC.
+             *
+             * Comandos que mutam estado devem usar .AsTracking() explícito
+             * na query que carrega a entidade — explicit > implicit, e o
+             * reviewer vê imediatamente que aquela query escreve.
+             */
+            ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         }
 
         public DbSet<User> User { get; set; } = null!;

@@ -1,8 +1,8 @@
 using MageBackend.Database;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using MageBackend.Core;
-using MageBackend.Core.Commands;
+using MageBackend.Web;
+using MageBackend.Shared.Cqrs;
 
 namespace MageBackend.Features.Product.Commands
 {
@@ -30,7 +30,7 @@ namespace MageBackend.Features.Product.Commands
 
         public async Task<CommandResult<ProductResponseDto>> Handle(UpdateProductCommand command, CancellationToken cancellationToken)
         {
-            var product = await _context.Product.FirstOrDefaultAsync(p => p.Id == command.Id && !p.IsDeleted, cancellationToken);
+            var product = await _context.Product.AsTracking().FirstOrDefaultAsync(p => p.Id == command.Id && !p.IsDeleted, cancellationToken);
             if (product == null) return new CommandResult<ProductResponseDto>(false, Error: "Product not found", StatusCode: 404);
 
             if (!string.IsNullOrEmpty(command.Sku) && command.Sku != product.Sku)

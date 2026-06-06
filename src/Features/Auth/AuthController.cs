@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using MageBackend.Core;
-using MageBackend.Core.Filters;
+using MageBackend.Web;
+using MageBackend.Web.Filters;
 using MageBackend.Features.Auth.Commands;
 using MageBackend.Features.Auth.Queries;
 using MediatR;

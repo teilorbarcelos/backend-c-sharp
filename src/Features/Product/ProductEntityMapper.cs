@@ -1,4 +1,4 @@
-using MageBackend.Core;
+using MageBackend.Domain;
 
 namespace MageBackend.Features.Product
 {

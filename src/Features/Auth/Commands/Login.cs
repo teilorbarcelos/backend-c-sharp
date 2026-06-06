@@ -1,10 +1,8 @@
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MageBackend.Features.Auth.Commands
 {
@@ -14,7 +12,20 @@ namespace MageBackend.Features.Auth.Commands
 
     public class LoginHandler : IRequestHandler<LoginCommand, LoginResult>
     {
-        private const string ErrorUserDisabled = "User not found or account is disabled/removed";
+        /*
+         * Resposta única para TODAS as falhas de autenticação: user não existe,
+         * user deletado, role inativa, user inativo, auth inativo, senha errada.
+         *
+         * Vetor de enumeração fechado: atacante não consegue distinguir
+         * "este email não está cadastrado" de "senha errada" via response body,
+         * status code ou headers. Mesmo ErrorKey para que o client consiga
+         * tratar programaticamente.
+         *
+         * O motivo real continua sendo logado internamente (Log.Warning com
+         * tag de reason) para que o SOC possa detectar tentativas de
+         * enumeration (e.g., spike de "user_not_found" para um domínio).
+         */
+        private const string ErrorInvalidCredentials = "Invalid email or password";
         private const string ErrorUnauthorized = "UnauthorizedError";
 
         private readonly ApplicationDbContext _context;
@@ -33,19 +44,38 @@ namespace MageBackend.Features.Auth.Commands
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Email == command.Email && !u.IsDeleted, cancellationToken);
 
-            if (user == null || user.Auth == null || user.Role == null || !user.Active || user.Auth.IsDeleted || !user.Auth.Active || !user.Role.Active)
+            if (!IsLoginable(user, out var reason))
             {
-                return new LoginResult(false, Error: ErrorUserDisabled, ErrorKey: ErrorUnauthorized, StatusCode: 401);
+                Log.Warning("[Auth] Login failed for {Email} (reason: {Reason})", command.Email, reason);
+                return new LoginResult(false, Error: ErrorInvalidCredentials, ErrorKey: ErrorUnauthorized, StatusCode: 401);
             }
 
-            var passwordMatches = BCrypt.Net.BCrypt.Verify(command.Password, user.Auth.Password);
-            if (!passwordMatches)
+            if (!BCrypt.Net.BCrypt.Verify(command.Password, user!.Auth!.Password))
             {
-                return new LoginResult(false, Error: "Invalid email or password", ErrorKey: ErrorUnauthorized, StatusCode: 401);
+                Log.Warning("[Auth] Login failed for {Email} (reason: {Reason})", command.Email, "wrong_password");
+                return new LoginResult(false, Error: ErrorInvalidCredentials, ErrorKey: ErrorUnauthorized, StatusCode: 401);
             }
 
             var response = await AuthHelper.GenerateAuthResponse(user, _context, _jwtProvider);
             return new LoginResult(true, Response: response);
+        }
+
+        /*
+         * Decisão de loginability extraída para manter Cognitive Complexity
+         * do Handle abaixo de 15. Cada estado terminal tem um reason
+         * distinto para o log do SOC.
+         */
+        private static bool IsLoginable(Database.User? user, out string reason)
+        {
+            if (user == null) { reason = "user_not_found_or_deleted"; return false; }
+            if (user.Auth == null) { reason = "auth_record_missing"; return false; }
+            if (user.Role == null) { reason = "role_missing"; return false; }
+            if (!user.Active) { reason = "user_inactive"; return false; }
+            if (user.Auth.IsDeleted) { reason = "auth_deleted"; return false; }
+            if (!user.Auth.Active) { reason = "auth_inactive"; return false; }
+            if (!user.Role.Active) { reason = "role_inactive"; return false; }
+            reason = "ok";
+            return true;
         }
     }
 }

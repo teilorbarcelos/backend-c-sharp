@@ -20,7 +20,7 @@ namespace MageBackend.Features.Role.Commands
 
         public async Task<UpdateRoleResult> Handle(UpdateRoleCommand command, CancellationToken cancellationToken)
         {
-            var role = await _context.Role.Where(r => r.Id == command.Id && !r.IsDeleted).FirstOrDefaultAsync(cancellationToken);
+            var role = await _context.Role.AsTracking().Where(r => r.Id == command.Id && !r.IsDeleted).FirstOrDefaultAsync(cancellationToken);
             if (role == null) return new UpdateRoleResult(false, Error: "Role not found", StatusCode: 404);
 
             role.Name = command.Name;

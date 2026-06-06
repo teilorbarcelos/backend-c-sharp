@@ -52,7 +52,16 @@ namespace MageBackend.Infrastructure.Auth
                 new Claim("email", payload.Email),
                 new Claim("roleId", payload.RoleId),
                 new Claim("permissions", JsonSerializer.Serialize(payload.Permissions)),
-                new Claim("sv", payload.SessionVersion.ToString())
+                new Claim("sv", payload.SessionVersion.ToString()),
+                /*
+                 * jti (JWT ID) é obrigatório para unicidade do token. Sem ele,
+                 * o JWT é determinístico para o mesmo payload + mesmo tempo,
+                 * então múltiplos logins do mesmo user produzem o MESMO token
+                 * (mesmo refresh hash, mesma chave no Redis) — quebrando o
+                 * cenário multi-device e permitindo que um logout/login
+                 * "ressuscite" tokens de outros devices.
+                 */
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
             var tokenDescriptor = new SecurityTokenDescriptor

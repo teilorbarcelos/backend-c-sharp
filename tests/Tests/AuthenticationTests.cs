@@ -415,7 +415,7 @@ namespace MageBackend.Tests
             using (var scope = _fixture.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var user = await dbContext.User.FindAsync(userId);
+                var user = await dbContext.User.AsTracking().FirstOrDefaultAsync(u => u.Id == userId);
                 if (user != null)
                 {
                     user.Active = false;
@@ -455,7 +455,7 @@ namespace MageBackend.Tests
             using (var scope = _fixture.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var user = await dbContext.User.FindAsync(userId);
+                var user = await dbContext.User.AsTracking().FirstOrDefaultAsync(u => u.Id == userId);
                 if (user != null)
                 {
                     user.Active = false;

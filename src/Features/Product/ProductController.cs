@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using MageBackend.Core;
-using MageBackend.Core.Filters;
+using MageBackend.Web;
+using MageBackend.Web.Filters;
 using MageBackend.Features.Product.Commands;
 using MediatR;
 using FluentValidation;

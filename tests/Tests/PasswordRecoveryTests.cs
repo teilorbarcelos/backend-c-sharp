@@ -75,19 +75,28 @@ namespace MageBackend.Tests
         [Fact]
         public async Task GivenInvalidTokenOrEmail_WhenValidatingOrChanging_ThenFails()
         {
-            // NotFound user
+            /*
+             * Anti-enumeração: user inexistente e token inválido retornam a
+             * MESMA resposta (status + body). Atacante não pode distinguir
+             * "este email existe" de "este email não existe" via response.
+             */
             var notFoundVal = await _client.PostAsJsonAsync("/v1/auth/password/validate", new { email = "doesnotexist@email.com", token = "123456" });
-            Assert.Equal(HttpStatusCode.NotFound, notFoundVal.StatusCode);
+            var unauthVal = await _client.PostAsJsonAsync("/v1/auth/password/validate", new { email = "admin@email.com", token = "000000" });
+
+            Assert.Equal(HttpStatusCode.Unauthorized, notFoundVal.StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, unauthVal.StatusCode);
+            Assert.Equal(
+                await notFoundVal.Content.ReadAsStringAsync(),
+                await unauthVal.Content.ReadAsStringAsync());
 
             var notFoundChange = await _client.PostAsJsonAsync("/v1/auth/password/change", new { email = "doesnotexist@email.com", token = "123456", password = "NewPassword123!" });
-            Assert.Equal(HttpStatusCode.NotFound, notFoundChange.StatusCode);
-
-            // Unauthorized token
-            var unauthVal = await _client.PostAsJsonAsync("/v1/auth/password/validate", new { email = "admin@email.com", token = "000000" });
-            Assert.Equal(HttpStatusCode.Unauthorized, unauthVal.StatusCode);
-
             var unauthChange = await _client.PostAsJsonAsync("/v1/auth/password/change", new { email = "admin@email.com", token = "000000", password = "NewPassword123!" });
+
+            Assert.Equal(HttpStatusCode.Unauthorized, notFoundChange.StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, unauthChange.StatusCode);
+            Assert.Equal(
+                await notFoundChange.Content.ReadAsStringAsync(),
+                await unauthChange.Content.ReadAsStringAsync());
         }
 
         [Fact]
@@ -100,7 +109,7 @@ namespace MageBackend.Tests
             using (var scope = _fixture.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var user = await dbContext.User.Include(u => u.Auth).FirstOrDefaultAsync(u => u.Email == "admin@email.com");
+                var user = await dbContext.User.Include(u => u.Auth).AsTracking().FirstOrDefaultAsync(u => u.Email == "admin@email.com");
                 Assert.NotNull(user);
                 Assert.NotNull(user.Auth);
                 token = user.Auth.RequestPasswordToken ?? "";

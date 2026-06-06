@@ -2,19 +2,22 @@ using dotenv.net;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using MageBackend.Core;
-using MageBackend.Core.Auditing;
+using MageBackend.Web;
+using MageBackend.Infrastructure.Auditing;
+using MageBackend.Infrastructure.Configuration;
 using MageBackend.Database;
 using MageBackend.Infrastructure.Auth;
-using MageBackend.Core.Middleware;
+using MageBackend.Web.Middleware;
 using Prometheus;
 using Prometheus.DotNetRuntime;
+using OpenTelemetry.Trace;
 using FluentValidation;
 using MageBackend.Infrastructure.Messaging;
 using MageBackend.Infrastructure.Storage;
 using MageBackend.Infrastructure.Pdf;
 using Serilog;
 using Serilog.Events;
+using Serilog.Context;
 
 var envFiles = new[] { "../.env", ".env" };
 DotEnv.Load(options: new DotEnvOptions(envFilePaths: envFiles, ignoreExceptions: true));
@@ -26,8 +29,9 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
     .WriteTo.Console(outputTemplate:
-        "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+        "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {TraceId}{Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 try
@@ -36,10 +40,15 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    if (builder.Environment.EnvironmentName != "Testing")
+    const string testingEnv = "Testing";
+    if (builder.Environment.EnvironmentName != testingEnv)
     {
         DotNetRuntimeStatsBuilder.Default().StartCollecting();
     }
+
+    var shutdownTimeout = int.TryParse(Environment.GetEnvironmentVariable("SHUTDOWN_TIMEOUT_SECONDS"), out var st) && st > 0 ? st : 30;
+    builder.Host.ConfigureHostOptions(o => o.ShutdownTimeout = TimeSpan.FromSeconds(shutdownTimeout));
+    Log.Information("[Host] Shutdown timeout configured to {Timeout}s", shutdownTimeout);
 
     builder.Host.UseSerilog();
 
@@ -61,18 +70,25 @@ try
     var rabbitUrl = EnvValidator.Required("RABBIT_URL");
     Environment.SetEnvironmentVariable("RABBIT_URL", rabbitUrl);
     builder.Services.AddSingleton<RabbitMQProvider>();
-    builder.Services.AddSingleton<IStorageProvider, LocalStorageProvider>();
-    builder.Services.AddHttpClient<IPdfProvider, PdfProvider>();
+    builder.Services.AddSingleton(sp =>
+    {
+        var provider = sp.GetRequiredService<RabbitMQProvider>();
+        var queue = Environment.GetEnvironmentVariable("RABBIT_CONSUMER_QUEUE") ?? "";
+        return new RabbitMQConsumerService(provider, queue);
+    });
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<RabbitMQConsumerService>());
+    builder.Services.AddHttpClient<IPdfProvider, PdfProvider>()
+        .AddStandardResilienceHandler(PdfResilienceConfig.Configure);
 
     builder.Services.AddValidatorsFromAssemblyContaining<Program>();
     builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
     builder.Services.AddSingleton<IAuditLogQueue, AuditLogQueue>();
     builder.Services.AddHostedService<AuditLogBackgroundService>();
-    builder.Services.AddSingleton<MageBackend.Core.IEntityMapper<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>, MageBackend.Features.Product.ProductEntityMapper>();
+    builder.Services.AddSingleton<MageBackend.Domain.IEntityMapper<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>, MageBackend.Features.Product.ProductEntityMapper>();
     builder.Services.AddCrudHandlers<MageBackend.Database.Product, MageBackend.Features.Product.ProductResponseDto>();
 
-    builder.Services.AddSingleton<MageBackend.Core.IEntityMapper<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>, MageBackend.Features.User.UserEntityMapper>();
+    builder.Services.AddSingleton<MageBackend.Domain.IEntityMapper<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>, MageBackend.Features.User.UserEntityMapper>();
     builder.Services.AddCrudHandlers<MageBackend.Database.User, MageBackend.Features.User.UserResponseDto>();
 
     builder.Services.AddControllers()
@@ -84,14 +100,37 @@ try
 
     builder.Services.AddCors(options =>
     {
-        options.AddPolicy("AllowAll", policy =>
+        var allowedOrigins = CorsConfig.GetAllowedOrigins(builder.Environment.EnvironmentName);
+
+        options.AddPolicy("Default", policy =>
         {
-            policy.SetIsOriginAllowed(origin => true)
+            policy.WithOrigins(allowedOrigins.ToArray())
                   .AllowAnyMethod()
                   .AllowAnyHeader()
                   .AllowCredentials();
         });
     });
+
+    if (OpenTelemetryConfig.IsEnabled())
+    {
+        builder.Services.AddOpenTelemetry()
+            .WithTracing(tracing =>
+            {
+                tracing.AddAspNetCoreInstrumentation()
+                       .AddEntityFrameworkCoreInstrumentation(o => o.SetDbStatementForText = true)
+                       .AddRedisInstrumentation(RedisProvider.Connection)
+                       .AddHttpClientInstrumentation()
+                       .AddOtlpExporter(o =>
+                       {
+                           o.Endpoint = new Uri(OpenTelemetryConfig.GetOtlpEndpoint());
+                       });
+            });
+    }
+
+    if (builder.Environment.EnvironmentName != testingEnv)
+    {
+        builder.Services.AddAppHealthChecks();
+    }
 
     builder.Services.AddOpenApi(options =>
     {
@@ -107,7 +146,7 @@ try
 
     var app = builder.Build();
 
-    if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Testing")
+    if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == testingEnv)
     {
         app.MapOpenApi();
         app.UseSwaggerUI(options =>
@@ -119,7 +158,7 @@ try
 
     app.UseMiddleware<ErrorHandlerMiddleware>();
 
-    app.UseCors("AllowAll");
+    app.UseCors("Default");
 
     app.UseMiddleware<RequestLoggingMiddleware>();
 
@@ -136,7 +175,13 @@ try
     app.UseRouting();
     app.MapControllers();
 
-    app.MapGet("/health", () => Results.Ok(new { status = "UP", timestamp = DateTime.UtcNow.ToString("o") }));
+    app.MapGet("/health", async (HttpContext http) =>
+    {
+        if (app.Environment.EnvironmentName == testingEnv)
+            return Results.Ok(new { status = "UP", timestamp = DateTime.UtcNow.ToString("o") });
+
+        return await HealthCheckConfig.RunHealthChecksAsync(http);
+    });
     app.MapMetrics();
 
     using (var scope = app.Services.CreateScope())
@@ -145,8 +190,32 @@ try
         await DbInitializer.InitializeAsync(dbContext);
     }
 
+    var migrateOnly = Environment.GetEnvironmentVariable("MIGRATE_ONLY") is string m && (m.Equals("true", StringComparison.OrdinalIgnoreCase) || m == "1");
+    if (migrateOnly)
+    {
+        Log.Information("MIGRATE_ONLY=true — migrations applied, exiting.");
+        return;
+    }
+
     var rabbitProvider = app.Services.GetRequiredService<RabbitMQProvider>();
     rabbitProvider.Connect();
+
+    var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+    lifetime.ApplicationStopping.Register(() =>
+    {
+        Log.Information("[Host] Shutdown requested — draining in-flight requests...");
+
+        try
+        {
+            var rabbit = app.Services.GetRequiredService<RabbitMQProvider>();
+            rabbit.Disconnect();
+            Log.Information("[Host] RabbitMQ disconnected");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[Host] Error disconnecting RabbitMQ during shutdown");
+        }
+    });
 
     Log.Information("Server ready at http://localhost:{Port} | Docs: http://localhost:{DocsPort}/v1/docs | Audit: http://localhost:{AuditPort}/admin/logs", port, port, port);
 

@@ -2,10 +2,22 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
-using MageBackend.Core;
+using Microsoft.EntityFrameworkCore;
+using MageBackend.Domain;
+using IndexAttribute = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace MageBackend.Database
 {
+    /*
+     * Índices declarados no nível da classe (API do EF Core 8+).
+     * Single source of truth — o snapshot e a migration são gerados a
+     * partir daqui. O composite do Audit é posicionado para otimizar
+     * queries do AuditExplorer (filtra por IdUser, ordena por CreatedAt).
+     */
+    [Index(nameof(Email), IsUnique = true)]
+    [Index(nameof(CognitoId))]
+    [Index(nameof(Document))]
+    [Index(nameof(IdRole))]
     [ExcludeFromCodeCoverage]
     public class User : SoftDeletableEntity
     {
@@ -67,6 +79,8 @@ namespace MageBackend.Database
         public bool Delete { get; set; } = false;
     }
 
+    [Index(nameof(Sku), IsUnique = true)]
+    [Index(nameof(Category))]
     [ExcludeFromCodeCoverage]
     public class Product : SoftDeletableEntity
     {
@@ -82,12 +96,14 @@ namespace MageBackend.Database
         public virtual User? User { get; set; }
     }
 
+    [Index(nameof(IdUser), nameof(CreatedAt), Name = "IX_tb_audit_IdUser_CreatedAt")]
     [ExcludeFromCodeCoverage]
     public class Audit
     {
         [Key]
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public string? IdUser { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public string? UserName { get; set; }
         public string? ActionType { get; set; }
         public string? ExecuteType { get; set; }
@@ -104,7 +120,6 @@ namespace MageBackend.Database
         public string? Method { get; set; }
         public string? Hostname { get; set; }
         public string? OriginalUrl { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
     public class ErrorLog

@@ -76,7 +76,8 @@ namespace MageBackend.Migrations
                 columns: table => new
                 {
                     id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    id_user = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    id_user = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false),
                     user_name = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     action_type = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     execute_type = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -92,8 +93,7 @@ namespace MageBackend.Migrations
                     base_url = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     method = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     hostname = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    original_url = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    original_url = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -152,9 +152,9 @@ namespace MageBackend.Migrations
                     id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     phone = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    email = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    cognito_id = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    document = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    email = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    cognito_id = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    document = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     avatar = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     id_auth = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     id_role = table.Column<string>(type: "nvarchar(450)", nullable: false),
@@ -186,8 +186,8 @@ namespace MageBackend.Migrations
                 {
                     id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    sku = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    category = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    sku = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    category = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     stock = table.Column<int>(type: "int", nullable: false),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -209,14 +209,47 @@ namespace MageBackend.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Product_category",
+                table: "Product",
+                column: "category");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Product_id_user",
                 table: "Product",
                 column: "id_user");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Product_sku",
+                table: "Product",
+                column: "sku",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RoleFeature_id_feature",
                 table: "RoleFeature",
                 column: "id_feature");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_tb_audit_IdUser_CreatedAt",
+                schema: "audit",
+                table: "tb_audit",
+                columns: new[] { "id_user", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_User_cognito_id",
+                table: "User",
+                column: "cognito_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_User_document",
+                table: "User",
+                column: "document");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_User_email",
+                table: "User",
+                column: "email",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_User_id_auth",

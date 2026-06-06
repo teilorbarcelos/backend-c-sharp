@@ -1,0 +1,54 @@
+using Microsoft.AspNetCore.Http;
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using MageBackend.Infrastructure.Auth;
+
+namespace MageBackend.Web.Middleware
+{
+    public class JwtAuthenticationMiddleware
+    {
+        private readonly RequestDelegate _next;
+
+        public JwtAuthenticationMiddleware(RequestDelegate next)
+        {
+            _next = next;
+        }
+
+        public async Task InvokeAsync(HttpContext context, JwtProvider jwtProvider)
+        {
+            var token = context.Request.Headers.Authorization.FirstOrDefault()?.Split(" ")[^1];
+            if (token != null)
+            {
+                try
+                {
+                    var payload = jwtProvider.VerifyToken(token);
+                    if (payload != null)
+                    {
+                        var claims = new[]
+                        {
+                            new Claim("id", payload.Id),
+                            new Claim("email", payload.Email),
+                            new Claim("roleId", payload.RoleId),
+                            new Claim("permissions", System.Text.Json.JsonSerializer.Serialize(payload.Permissions)),
+                            new Claim("sv", payload.SessionVersion.ToString())
+                        };
+                        var identity = new ClaimsIdentity(claims, "jwt");
+                        context.User = new ClaimsPrincipal(identity);
+                    }
+                }
+                /*
+                 * Empty catch is intentional: invalid token means
+                 * unauthenticated request, next middleware handles it.
+                 */
+#pragma warning disable S2486, S108
+                catch
+                {
+                }
+#pragma warning restore S2486, S108
+            }
+
+            await _next(context);
+        }
+    }
+}

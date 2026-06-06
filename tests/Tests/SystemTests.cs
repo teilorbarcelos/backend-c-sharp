@@ -1,20 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MageBackend.Database;
-using MageBackend.Features.Auth;
-using MageBackend.Features.User;
-using MageBackend.Features.Role;
-using MageBackend.Features.Product;
-using MageBackend.Infrastructure.Auth;
 using Xunit;
 
 namespace MageBackend.Tests
@@ -105,7 +94,7 @@ namespace MageBackend.Tests
         [Fact]
         public async Task GivenErrorHandlerMiddleware_WhenDbLoggingFails_ThenLogsErrorAndContinues()
         {
-            var middleware = new MageBackend.Core.Middleware.ErrorHandlerMiddleware(context => throw new Exception("Test exception"));
+            var middleware = new MageBackend.Web.Middleware.ErrorHandlerMiddleware(context => throw new Exception("Test exception"));
             var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
 
             var services = new ServiceCollection().BuildServiceProvider();
@@ -119,7 +108,7 @@ namespace MageBackend.Tests
         [Fact]
         public async Task GivenAuditLogMiddleware_WhenDbLoggingFails_ThenLogsErrorAndContinues()
         {
-            var middleware = new MageBackend.Core.Middleware.AuditLogMiddleware(context => Task.CompletedTask);
+            var middleware = new MageBackend.Web.Middleware.AuditLogMiddleware(context => Task.CompletedTask);
             var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
             context.Request.Method = "POST";
             context.Request.Path = "/v1/product";
@@ -141,8 +130,8 @@ namespace MageBackend.Tests
         [Fact]
         public void GivenAuditLogMiddleware_WhenJsonSanitizationThrows_ThenReturnsBodyAsIs()
         {
-            var middleware = new MageBackend.Core.Middleware.AuditLogMiddleware(context => Task.CompletedTask);
-            var method = typeof(MageBackend.Core.Middleware.AuditLogMiddleware)
+            var middleware = new MageBackend.Web.Middleware.AuditLogMiddleware(context => Task.CompletedTask);
+            var method = typeof(MageBackend.Web.Middleware.AuditLogMiddleware)
                 .GetMethod("SanitizeBody", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             var result = method!.Invoke(null, new object[] { "{invalid-json" });
