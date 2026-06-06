@@ -10,12 +10,14 @@ using MageBackend.Infrastructure.Auth;
 using MageBackend.Web.Middleware;
 using Prometheus;
 using Prometheus.DotNetRuntime;
+using OpenTelemetry.Trace;
 using FluentValidation;
 using MageBackend.Infrastructure.Messaging;
 using MageBackend.Infrastructure.Storage;
 using MageBackend.Infrastructure.Pdf;
 using Serilog;
 using Serilog.Events;
+using Serilog.Context;
 
 var envFiles = new[] { "../.env", ".env" };
 DotEnv.Load(options: new DotEnvOptions(envFilePaths: envFiles, ignoreExceptions: true));
@@ -27,8 +29,9 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
     .WriteTo.Console(outputTemplate:
-        "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+        "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {TraceId}{Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 try
@@ -96,6 +99,22 @@ try
                   .AllowCredentials();
         });
     });
+
+    if (OpenTelemetryConfig.IsEnabled())
+    {
+        builder.Services.AddOpenTelemetry()
+            .WithTracing(tracing =>
+            {
+                tracing.AddAspNetCoreInstrumentation()
+                       .AddEntityFrameworkCoreInstrumentation(o => o.SetDbStatementForText = true)
+                       .AddRedisInstrumentation(RedisProvider.Connection)
+                       .AddHttpClientInstrumentation()
+                       .AddOtlpExporter(o =>
+                       {
+                           o.Endpoint = new Uri(OpenTelemetryConfig.GetOtlpEndpoint());
+                       });
+            });
+    }
 
     builder.Services.AddOpenApi(options =>
     {
