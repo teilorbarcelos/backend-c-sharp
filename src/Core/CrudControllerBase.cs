@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MageBackend.Core.Commands;
+using MageBackend.Shared.Cqrs;
 using MageBackend.Core.Filters;
 using MageBackend.Domain;
 using MageBackend.Shared;

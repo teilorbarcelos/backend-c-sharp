@@ -5,10 +5,11 @@ using MageBackend.Infrastructure.Auth;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
+using MageBackend.Shared.Cqrs;
 
 namespace MageBackend.Features.User.Commands
 {
-    public record UpdateUserCommand : IRequest<Core.Commands.CommandResult<UserResponseDto>>, Core.ICommandWithId
+    public record UpdateUserCommand : IRequest<CommandResult<UserResponseDto>>, Core.ICommandWithId
     {
         public string Id { get; init; } = string.Empty;
         public string? Name { get; init; }
@@ -25,7 +26,7 @@ namespace MageBackend.Features.User.Commands
         public void SetId(string id) => typeof(UpdateUserCommand).GetProperty("Id")!.SetValue(this, id);
     }
 
-    public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, MageBackend.Core.Commands.CommandResult<UserResponseDto>>
+    public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, CommandResult<UserResponseDto>>
     {
         private readonly ApplicationDbContext _context;
 
@@ -34,10 +35,10 @@ namespace MageBackend.Features.User.Commands
             _context = context;
         }
 
-        public async Task<MageBackend.Core.Commands.CommandResult<UserResponseDto>> Handle(UpdateUserCommand command, CancellationToken cancellationToken)
+        public async Task<CommandResult<UserResponseDto>> Handle(UpdateUserCommand command, CancellationToken cancellationToken)
         {
             var user = await _context.User.Include(u => u.Auth).AsTracking().FirstOrDefaultAsync(u => u.Id == command.Id && !u.IsDeleted, cancellationToken);
-            if (user == null) return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(false, Error: "User not found", StatusCode: 404);
+            if (user == null) return new CommandResult<UserResponseDto>(false, Error: "User not found", StatusCode: 404);
 
             var adminEmail = Environment.GetEnvironmentVariable("FIRST_USER") ?? "admin@email.com";
 
@@ -47,12 +48,12 @@ namespace MageBackend.Features.User.Commands
             }
 
             var error = await UpdateStandardUserAsync(user, command);
-            if (error != null) return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(false, Error: error, StatusCode: 400);
+            if (error != null) return new CommandResult<UserResponseDto>(false, Error: error, StatusCode: 400);
 
-            return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(true, Data: UserMapper.MapToDto(user));
+            return new CommandResult<UserResponseDto>(true, Data: UserMapper.MapToDto(user));
         }
 
-        private async Task<MageBackend.Core.Commands.CommandResult<UserResponseDto>> UpdateAdminUserAsync(Database.User user, UpdateUserCommand command)
+        private async Task<CommandResult<UserResponseDto>> UpdateAdminUserAsync(Database.User user, UpdateUserCommand command)
         {
             if (!string.IsNullOrEmpty(command.Password) && user.Auth != null)
             {
@@ -62,7 +63,7 @@ namespace MageBackend.Features.User.Commands
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             await SessionManager.InvalidateUserSessionsAsync(user.Id, _context);
-            return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(true, Data: UserMapper.MapToDto(user));
+            return new CommandResult<UserResponseDto>(true, Data: UserMapper.MapToDto(user));
         }
 
         private async Task<string?> UpdateStandardUserAsync(Database.User user, UpdateUserCommand command)

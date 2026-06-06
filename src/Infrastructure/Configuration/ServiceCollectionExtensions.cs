@@ -1,4 +1,4 @@
-using MageBackend.Core.Commands;
+using MageBackend.Shared.Cqrs;
 using MageBackend.Domain;
 using MageBackend.Shared;
 using MediatR;

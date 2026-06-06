@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 
-namespace MageBackend.Core.Commands
+namespace MageBackend.Shared.Cqrs
 {
     public class GetByIdHandler<TEntity, TDto> : IRequestHandler<GetByIdQuery<TEntity, TDto>, TDto?>
         where TEntity : BaseEntity

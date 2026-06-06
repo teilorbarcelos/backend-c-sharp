@@ -5,9 +5,11 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 
+using MageBackend.Shared.Cqrs;
+
 namespace MageBackend.Features.User.Commands
 {
-    public record CreateUserCommand : IRequest<MageBackend.Core.Commands.CommandResult<UserResponseDto>>
+    public record CreateUserCommand : IRequest<CommandResult<UserResponseDto>>
     {
         public string Name { get; init; } = string.Empty;
         public string Email { get; init; } = string.Empty;
@@ -19,7 +21,7 @@ namespace MageBackend.Features.User.Commands
         public string IdRole { get; init; } = string.Empty;
     }
 
-    public class CreateUserHandler : IRequestHandler<CreateUserCommand, MageBackend.Core.Commands.CommandResult<UserResponseDto>>
+    public class CreateUserHandler : IRequestHandler<CreateUserCommand, CommandResult<UserResponseDto>>
     {
         private readonly ApplicationDbContext _context;
 
@@ -28,18 +30,18 @@ namespace MageBackend.Features.User.Commands
             _context = context;
         }
 
-        public async Task<MageBackend.Core.Commands.CommandResult<UserResponseDto>> Handle(CreateUserCommand command, CancellationToken cancellationToken)
+        public async Task<CommandResult<UserResponseDto>> Handle(CreateUserCommand command, CancellationToken cancellationToken)
         {
             var emailExists = await _context.User.AnyAsync(u => u.Email == command.Email && !u.IsDeleted, cancellationToken);
             if (emailExists)
             {
-                return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(false, Error: "Email already in use.", StatusCode: 400);
+                return new CommandResult<UserResponseDto>(false, Error: "Email already in use.", StatusCode: 400);
             }
 
             var roleExists = await _context.Role.AnyAsync(r => r.Id == command.IdRole && !r.IsDeleted, cancellationToken);
             if (!roleExists)
             {
-                return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(false, Error: "Role not found.", StatusCode: 400);
+                return new CommandResult<UserResponseDto>(false, Error: "Role not found.", StatusCode: 400);
             }
 
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(command.Password, 10);
@@ -72,7 +74,7 @@ namespace MageBackend.Features.User.Commands
             _context.User.Add(user);
             await _context.SaveChangesAsync(cancellationToken);
 
-            return new MageBackend.Core.Commands.CommandResult<UserResponseDto>(true, Data: UserMapper.MapToDto(user));
+            return new CommandResult<UserResponseDto>(true, Data: UserMapper.MapToDto(user));
         }
     }
 

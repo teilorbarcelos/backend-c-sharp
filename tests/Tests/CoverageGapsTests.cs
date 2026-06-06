@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MageBackend.Database;
-using MageBackend.Core.Commands;
+using MageBackend.Shared.Cqrs;
 using MageBackend.Core.Filters;
 using MageBackend.Core.Middleware;
 using MageBackend.Infrastructure.Auth;

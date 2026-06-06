@@ -2,7 +2,7 @@ using MageBackend.Domain;
 using MageBackend.Shared;
 using MediatR;
 
-namespace MageBackend.Core.Commands
+namespace MageBackend.Shared.Cqrs
 {
 #pragma warning disable S2326
     public record GetByIdQuery<TEntity, TDto>(string Id) : IRequest<TDto?> where TEntity : BaseEntity;
