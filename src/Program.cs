@@ -46,6 +46,10 @@ try
         DotNetRuntimeStatsBuilder.Default().StartCollecting();
     }
 
+    var shutdownTimeout = int.TryParse(Environment.GetEnvironmentVariable("SHUTDOWN_TIMEOUT_SECONDS"), out var st) && st > 0 ? st : 30;
+    builder.Host.ConfigureHostOptions(o => o.ShutdownTimeout = TimeSpan.FromSeconds(shutdownTimeout));
+    Log.Information("[Host] Shutdown timeout configured to {Timeout}s", shutdownTimeout);
+
     builder.Host.UseSerilog();
 
     var port = Environment.GetEnvironmentVariable("PORT") ?? "8888";
@@ -195,6 +199,23 @@ try
 
     var rabbitProvider = app.Services.GetRequiredService<RabbitMQProvider>();
     rabbitProvider.Connect();
+
+    var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+    lifetime.ApplicationStopping.Register(() =>
+    {
+        Log.Information("[Host] Shutdown requested — draining in-flight requests...");
+
+        try
+        {
+            var rabbit = app.Services.GetRequiredService<RabbitMQProvider>();
+            rabbit.Disconnect();
+            Log.Information("[Host] RabbitMQ disconnected");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[Host] Error disconnecting RabbitMQ during shutdown");
+        }
+    });
 
     Log.Information("Server ready at http://localhost:{Port} | Docs: http://localhost:{DocsPort}/v1/docs | Audit: http://localhost:{AuditPort}/admin/logs", port, port, port);
 
