@@ -116,6 +116,11 @@ try
             });
     }
 
+    if (builder.Environment.EnvironmentName != "Testing")
+    {
+        builder.Services.AddAppHealthChecks();
+    }
+
     builder.Services.AddOpenApi(options =>
     {
         options.AddDocumentTransformer((document, context, cancellationToken) =>
@@ -159,7 +164,13 @@ try
     app.UseRouting();
     app.MapControllers();
 
-    app.MapGet("/health", () => Results.Ok(new { status = "UP", timestamp = DateTime.UtcNow.ToString("o") }));
+    app.MapGet("/health", async (HttpContext http) =>
+    {
+        if (app.Environment.EnvironmentName == "Testing")
+            return Results.Ok(new { status = "UP", timestamp = DateTime.UtcNow.ToString("o") });
+
+        return await HealthCheckConfig.RunHealthChecksAsync(http);
+    });
     app.MapMetrics();
 
     using (var scope = app.Services.CreateScope())

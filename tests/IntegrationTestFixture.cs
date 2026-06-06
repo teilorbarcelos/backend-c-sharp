@@ -43,6 +43,7 @@ namespace MageBackend.Tests
             Environment.SetEnvironmentVariable("DISABLE_RATE_LIMIT", "true");
             Environment.SetEnvironmentVariable("JWT_SECRET", "86941813-8b97-4cad-b0b2-f97734a947d7");
             Environment.SetEnvironmentVariable("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:4200,http://cors-test.example.com");
+            Environment.SetEnvironmentVariable("OTEL_ENABLED", "false");
         }
 
         public new async Task DisposeAsync()

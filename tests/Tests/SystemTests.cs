@@ -1,20 +1,9 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MageBackend.Database;
-using MageBackend.Features.Auth;
-using MageBackend.Features.User;
-using MageBackend.Features.Role;
-using MageBackend.Features.Product;
-using MageBackend.Infrastructure.Auth;
 using Xunit;
 
 namespace MageBackend.Tests
