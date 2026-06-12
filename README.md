@@ -131,6 +131,23 @@ src/
 
 ---
 
+## 🔌 Modo Microsserviço (auth-service-csharp)
+
+O `backend-c-sharp` pode delegar a autenticação para o `auth-service-csharp` (outro repositório).
+
+- `AUTH_MODE=remote` no `.env` faz o backend retornar 404 para `/v1/auth/*`
+- Middleware JWT, RBAC e sessão Redis continuam **inalterados**
+- Tokens do auth-service são aceitos (mesmo `JWT_SECRET` compartilhado)
+
+```bash
+# Compliance modo microsserviço
+cd ../mage-backend-compliance
+cp .env.auth.csharp .env
+make test-auth-csharp
+```
+
+---
+
 ## Docker
 
 ### Dockerfile Multi-stage
