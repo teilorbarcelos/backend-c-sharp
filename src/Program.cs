@@ -172,6 +172,20 @@ try
 
     app.UseHttpMetrics();
 
+    var authMode = Environment.GetEnvironmentVariable("AUTH_MODE") ?? "local";
+    if (authMode.Equals("remote", StringComparison.OrdinalIgnoreCase))
+    {
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/v1/auth"))
+            {
+                context.Response.StatusCode = 404;
+                return;
+            }
+            await next();
+        });
+    }
+
     app.UseRouting();
     app.MapControllers();
 
