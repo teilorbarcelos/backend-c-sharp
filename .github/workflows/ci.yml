@@ -85,4 +85,4 @@ jobs:
         LC_ALL: C.UTF-8
       run: |
         export PATH="$PATH:$HOME/.dotnet/tools"
-        ./scripts/sonar-scan.sh "teilorbarcelos_backend-csharp" "Backend CSharp"
+        ./scripts/sonar-scan.sh "backend-c-sharp" "backend-c-sharp"

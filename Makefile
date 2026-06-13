@@ -71,5 +71,5 @@ db-update:
 
 sonar:
 	@echo "🔍 Rodando scan do SonarQube (análise C# + cobertura)..."
-	./scripts/sonar-scan.sh "teilorbarcelos_backend-csharp" "Backend CSharp"
+	./scripts/sonar-scan.sh "backend-c-sharp" "backend-c-sharp"
 
