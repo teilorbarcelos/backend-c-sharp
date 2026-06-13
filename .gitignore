@@ -38,7 +38,11 @@ scratch/
 *tests/coverage.json
 src/StorageData/*
 .sonarqube
+.scannerwork/
 tests/coverage.opencover.xml
+tests/coverage.cobertura.xml
+tests/coverage.generic.xml
+tests/tests/
 tests/TestResults/
 run-sonar.sh
 TODO.md

@@ -1,4 +1,4 @@
-.PHONY: infra-up infra-down infra-clean dev db-migrate db-seed metrics-up metrics-stop metrics-down test coverage setup lint generate migration db-update
+.PHONY: infra-up infra-down infra-clean dev db-migrate db-seed metrics-up metrics-stop metrics-down test coverage setup lint generate migration db-update sonar
 
 infra-up:
 	docker compose -f docker-compose.infra.yml up -d
@@ -68,4 +68,8 @@ migration:
 
 db-update:
 	dotnet ef database update -p src/MageBackend.csproj
+
+sonar:
+	@echo "🔍 Rodando scan do SonarQube (análise C# + cobertura)..."
+	./scripts/sonar-scan.sh "backend-c-sharp" "backend-c-sharp"
 
